@@ -23,6 +23,7 @@
   --green: #2c8a5a;
   --amber: #e2a43a;
   --sail: #fbfaf5;
+  --map: 150px;
   --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
   --font-body: "Atkinson Hyperlegible", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
@@ -32,7 +33,7 @@ html, body { height: 100%; }
 body { background: var(--sea); color: var(--ink); font-family: var(--font-body); overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
 #game { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
 
-.hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; }
+.hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 12px) calc(16px + var(--map) + 8px) 0 16px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; }
 .inst { background: var(--panel); color: var(--on-panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; min-width: 0; }
 .inst .lab { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--on-panel-dim); }
 .inst .val { font-family: var(--font-mono); font-size: 18px; font-variant-numeric: tabular-nums; }
@@ -48,6 +49,9 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
 .trimstate { font-family: var(--font-mono); font-size: 11px; margin-top: 4px; }
 .auto { pointer-events: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--on-panel); cursor: pointer; }
 .auto input { accent-color: var(--green); width: 16px; height: 16px; }
+.minimap { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 16px; width: var(--map); height: var(--map); padding: 6px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; pointer-events: none; }
+.minimap canvas { display: block; width: 100%; height: 100%; }
+@media (max-width: 600px) { :root { --map: 104px; } }
 
 .controls { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 14px); display: flex; justify-content: space-between; gap: 12px; pointer-events: none; }
 .pad { display: flex; gap: 8px; pointer-events: auto; }
@@ -90,6 +94,8 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
   </div>
 </div>
 
+<div class="minimap" aria-hidden="true"><canvas id="mini"></canvas></div>
+
 <div class="controls">
   <div class="pad">
     <button class="btn" data-act="left" aria-label="Steer to port"><div><span>◀</span>Port</div></button>
@@ -122,11 +128,15 @@ const DEG = Math.PI / 180;
 const W = 2400, H = 2400, MAXV = 150;
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-let cw = 0, ch = 0, dpr = 1;
+const mini = document.getElementById('mini');
+const mctx = mini.getContext('2d');
+let cw = 0, ch = 0, dpr = 1, ms = 0;
 function resize() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
   cw = canvas.clientWidth; ch = canvas.clientHeight;
   canvas.width = cw * dpr; canvas.height = ch * dpr;
+  ms = mini.clientWidth;
+  mini.width = mini.height = ms * dpr;
 }
 window.addEventListener('resize', resize); resize();
 
@@ -395,11 +405,67 @@ function drawBoat(info) {
   ctx.restore();
 }
 
+function drawMinimap() {
+  const c = mctx, s = ms / W;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.clearRect(0, 0, ms, ms);
+  c.fillStyle = C['--sea']; c.globalAlpha = 0.25; c.fillRect(0, 0, ms, ms); c.globalAlpha = 1;
+  c.save(); c.scale(s, s);
+  c.beginPath(); c.rect(0, 0, W, H); c.clip();
+
+  c.fillStyle = C['--sea-shallow']; c.globalAlpha = 0.25;
+  for (const sh of shoals) { c.beginPath(); c.arc(sh.x, sh.y, sh.r, 0, 7); c.fill(); }
+  c.globalAlpha = 1;
+
+  // course line
+  c.setLineDash([60, 60]); c.strokeStyle = 'rgba(234,244,242,.35)'; c.lineWidth = 1 / s;
+  c.beginPath(); c.moveTo(1150, 2260); marks.forEach(m => c.lineTo(m.x, m.y)); c.stroke(); c.setLineDash([]);
+
+  // marks
+  marks.forEach((m, i) => {
+    const done = state === 'racing' && i < nextIdx, active = state === 'racing' && i === nextIdx;
+    if (m.finish) {
+      c.strokeStyle = C['--amber']; c.lineWidth = 2 / s;
+      c.beginPath(); c.moveTo(m.x - 90, m.y); c.lineTo(m.x + 90, m.y); c.stroke();
+    } else {
+      c.fillStyle = done ? 'rgba(159,192,192,.4)' : C[m.col];
+      c.beginPath(); c.arc(m.x, m.y, 3.5 / s, 0, 7); c.fill();
+    }
+    if (active) {
+      c.strokeStyle = m.finish ? C['--amber'] : C[m.col]; c.lineWidth = 1.5 / s;
+      c.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4);
+      c.beginPath(); c.arc(m.x, m.y, 7 / s, 0, 7); c.stroke(); c.globalAlpha = 1;
+    }
+  });
+
+  // viewport
+  c.strokeStyle = 'rgba(234,244,242,.3)'; c.lineWidth = 1 / s;
+  c.strokeRect(cam.x - cw / 2, cam.y - ch / 2, cw, ch);
+
+  // track
+  if (boat.wake.length > 1) {
+    c.strokeStyle = 'rgba(251,250,245,.45)'; c.lineWidth = 1 / s;
+    c.beginPath(); c.moveTo(boat.wake[0].x, boat.wake[0].y);
+    for (const p of boat.wake) c.lineTo(p.x, p.y);
+    c.stroke();
+  }
+  c.restore();
+
+  // boat (screen units so it stays legible)
+  c.save(); c.translate(boat.x * s, boat.y * s); c.rotate(boat.h);
+  c.fillStyle = C['--sail']; c.strokeStyle = C['--ink']; c.lineWidth = 1;
+  c.beginPath(); c.moveTo(0, -6); c.lineTo(4, 4); c.lineTo(-4, 4); c.closePath(); c.fill(); c.stroke();
+  c.restore();
+
+  c.strokeStyle = 'rgba(234,244,242,.5)'; c.lineWidth = 1; c.strokeRect(0.5, 0.5, ms - 1, ms - 1);
+}
+
 let last = performance.now();
 function frame(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const info = update(dt);
   drawWorld(info);
+  drawMinimap();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
