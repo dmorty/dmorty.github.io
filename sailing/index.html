@@ -160,6 +160,7 @@ const shoals = Array.from({ length: 7 }, () => ({ x: 200 + rnd() * 2000, y: 200 
 
 const boat = { x: 1150, y: 2260, h: 50 * DEG, v: 0, rudder: 0, sheet: 30, wake: [] };
 let windFrom = 0, windStr = 1, t = 0, raceT = 0, state = 'ready', nextIdx = 0, wakeT = 0;
+let track = []; // full sailed course for the minimap, reset each race
 let cam = { x: boat.x, y: boat.y - 100 };
 const input = { left: 0, right: 0, trim: 0, ease: 0 };
 let auto = false;
@@ -199,6 +200,7 @@ $('start').addEventListener('click', startRace);
 function startRace() {
   Object.assign(boat, { x: 1150, y: 2260, h: 50 * DEG, v: 0, rudder: 0, sheet: 30, wake: [] });
   nextIdx = 0; raceT = 0; state = 'racing';
+  track = [{ x: boat.x, y: boat.y }];
   $('overlay').hidden = true;
   toast('Go!');
 }
@@ -246,6 +248,10 @@ function update(dt) {
   }
   wakeT += dt;
   if (wakeT > 0.06) { wakeT = 0; boat.wake.push({ x: boat.x, y: boat.y }); if (boat.wake.length > 110) boat.wake.shift(); }
+  if (racing) {
+    const p = track[track.length - 1];
+    if (Math.hypot(boat.x - p.x, boat.y - p.y) > 12) track.push({ x: boat.x, y: boat.y });
+  }
 
   if (racing) {
     const m = marks[nextIdx];
@@ -442,11 +448,12 @@ function drawMinimap() {
   c.strokeStyle = 'rgba(234,244,242,.3)'; c.lineWidth = 1 / s;
   c.strokeRect(cam.x - cw / 2, cam.y - ch / 2, cw, ch);
 
-  // track
-  if (boat.wake.length > 1) {
-    c.strokeStyle = 'rgba(251,250,245,.45)'; c.lineWidth = 1 / s;
-    c.beginPath(); c.moveTo(boat.wake[0].x, boat.wake[0].y);
-    for (const p of boat.wake) c.lineTo(p.x, p.y);
+  // sailed course since the start
+  if (track.length > 1) {
+    c.strokeStyle = 'rgba(251,250,245,.6)'; c.lineWidth = 1.2 / s; c.lineJoin = 'round';
+    c.beginPath(); c.moveTo(track[0].x, track[0].y);
+    for (const p of track) c.lineTo(p.x, p.y);
+    c.lineTo(boat.x, boat.y);
     c.stroke();
   }
   c.restore();
