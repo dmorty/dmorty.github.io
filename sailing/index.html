@@ -32,7 +32,8 @@
 }
 html, body { height: 100%; }
 body { background: var(--sea); color: var(--ink); font-family: var(--font-body); overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
-#game { position: fixed; inset: 0; display: block; width: 100%; height: 100%; }
+#game { position: fixed; inset: 0; display: block; width: 100%; height: 100%; cursor: grab; }
+#game.dragging { cursor: grabbing; }
 
 .hud { position: fixed; left: 0; right: 0; top: 0; padding: calc(env(safe-area-inset-top, 0px) + 12px) calc(16px + var(--map) + 8px) 0 16px; display: flex; gap: 8px; flex-wrap: wrap; pointer-events: none; }
 .inst { background: var(--panel); color: var(--on-panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 2px; min-width: 0; }
@@ -53,6 +54,8 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
 .minimap { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px); right: 16px; width: var(--map); height: var(--map); padding: 6px; box-sizing: border-box; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 10px; pointer-events: none; }
 .minimap canvas { display: block; width: 100%; height: 100%; }
 .credit { position: absolute; top: 100%; right: 0; margin-top: 4px; font-size: 10px; color: var(--ink); opacity: .7; white-space: nowrap; }
+.recenter { position: fixed; top: calc(env(safe-area-inset-top, 0px) + 12px + var(--map) + 24px); right: 16px; background: var(--panel); color: var(--on-panel); border: 1px solid var(--panel-line); border-radius: 10px; padding: 8px 12px; font-family: var(--font-body); font-weight: 700; font-size: 13px; cursor: pointer; }
+.recenter:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 @media (max-width: 600px) { :root { --map: 104px; } }
 
 .controls { position: fixed; left: 0; right: 0; bottom: 0; padding: 0 16px calc(env(safe-area-inset-bottom, 0px) + 14px); display: flex; justify-content: space-between; gap: 12px; pointer-events: none; }
@@ -97,6 +100,7 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
 </div>
 
 <div class="minimap"><canvas id="mini" aria-hidden="true"></canvas><div class="credit">© OpenStreetMap contributors</div></div>
+<button class="recenter" id="recenter" hidden aria-label="Recenter the map on the boat">⌖ Recenter</button>
 
 <div class="controls">
   <div class="pad">
@@ -118,6 +122,7 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
     <div class="keys">
       <kbd>← →</kbd><span>Steer (or Port / Stbd buttons)</span>
       <kbd>↑ / ↓</kbd><span>Trim in / ease out the sail</span>
+      <kbd>Drag · scroll</kbd><span>Look around the course (pinch or + / − to zoom, C to recenter)</span>
     </div>
     <p>You can't sail within 40° of the wind (the shaded wedge). To reach the top mark, zigzag upwind by tacking. Keep the trim needle in the green band, and keep off the shore: running aground stops you dead.</p>
     <button class="cta" id="start">Start race</button>
@@ -183,6 +188,18 @@ const boat = { x: START.x, y: START.y, h: START.h, v: 0, rudder: 0, sheet: 30, w
 let windFrom = 0, windStr = 1, t = 0, raceT = 0, state = 'ready', nextIdx = 0, wakeT = 0, groundT = -9;
 let track = []; // full sailed course for the minimap, reset each race
 let cam = { x: boat.x, y: boat.y - 100 };
+let zoom = 1, follow = true; // follow: camera tracks the boat; false once the player pans
+const ZMAX = 3;
+const minZoom = () => Math.min(1, Math.min(cw / W, ch / H) * 0.9);
+const clampCam = () => { cam.x = clamp(cam.x, 0, W); cam.y = clamp(cam.y, 0, H); };
+function zoomAt(f, sx, sy) {
+  const wx = cam.x + (sx - cw / 2) / zoom, wy = cam.y + (sy - ch / 2) / zoom;
+  zoom = clamp(zoom * f, minZoom(), ZMAX);
+  cam.x = wx - (sx - cw / 2) / zoom; cam.y = wy - (sy - ch / 2) / zoom;
+  clampCam();
+}
+function recenter() { follow = true; zoom = 1; }
+function detach() { follow = false; }
 const input = { left: 0, right: 0, trim: 0, ease: 0 };
 let auto = false;
 let best = null; try { best = parseFloat(localStorage.getItem('buoyBest')) || null; } catch (e) {}
@@ -205,7 +222,13 @@ function trimEff(sheet, twa) {
 
 // Input
 const keymap = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'trim', w: 'trim', W: 'trim', ArrowDown: 'ease', s: 'ease', S: 'ease' };
-addEventListener('keydown', e => { if (keymap[e.key]) { input[keymap[e.key]] = 1; e.preventDefault(); } if (e.key === 'Enter' && state !== 'racing') startRace(); });
+addEventListener('keydown', e => {
+  if (keymap[e.key]) { input[keymap[e.key]] = 1; e.preventDefault(); }
+  if (e.key === 'Enter' && state !== 'racing') startRace();
+  if (e.key === '+' || e.key === '=') zoomAt(1.25, cw / 2, ch / 2);
+  if (e.key === '-' || e.key === '_') zoomAt(0.8, cw / 2, ch / 2);
+  if (e.key === 'c' || e.key === 'C') recenter();
+});
 addEventListener('keyup', e => { if (keymap[e.key]) input[keymap[e.key]] = 0; });
 document.querySelectorAll('.btn').forEach(b => {
   const a = b.dataset.act;
@@ -216,12 +239,54 @@ document.querySelectorAll('.btn').forEach(b => {
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
 $('autotrim').addEventListener('change', e => auto = e.target.checked);
+$('recenter').addEventListener('click', recenter);
+
+// Map navigation: wheel / trackpad pinch zooms, drag pans, two-finger pinch zooms and pans
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const f = Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0015));
+  if (follow) zoomAt(f, cw / 2, ch / 2); else zoomAt(f, e.clientX, e.clientY);
+}, { passive: false });
+const ptrs = new Map();
+let dragged = false;
+const pinch = () => { const [a, b] = [...ptrs.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
+canvas.addEventListener('pointerdown', e => {
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
+  dragged = false;
+});
+canvas.addEventListener('pointermove', e => {
+  const p = ptrs.get(e.pointerId);
+  if (!p) return;
+  if (ptrs.size === 1) {
+    if (!dragged && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) < 4) return;
+    if (!dragged) { dragged = true; detach(); canvas.classList.add('dragging'); }
+    cam.x -= (e.clientX - p.x) / zoom; cam.y -= (e.clientY - p.y) / zoom; clampCam();
+    p.x = e.clientX; p.y = e.clientY;
+  } else if (ptrs.size === 2) {
+    const before = pinch();
+    p.x = e.clientX; p.y = e.clientY;
+    const after = pinch();
+    if (before.d > 0) zoomAt(after.d / before.d, after.x, after.y);
+    if (Math.hypot(after.x - before.x, after.y - before.y) > 0.5) detach();
+    cam.x -= (after.x - before.x) / zoom; cam.y -= (after.y - before.y) / zoom; clampCam();
+  }
+});
+const endPtr = e => {
+  ptrs.delete(e.pointerId);
+  // re-anchor any remaining finger so a lift mid-pinch doesn't jump the view
+  for (const q of ptrs.values()) { q.x0 = q.x; q.y0 = q.y; }
+  if (!ptrs.size) canvas.classList.remove('dragging');
+};
+canvas.addEventListener('pointerup', endPtr);
+canvas.addEventListener('pointercancel', endPtr);
 $('start').addEventListener('click', startRace);
 
 function startRace() {
   Object.assign(boat, { x: START.x, y: START.y, h: START.h, v: 0, rudder: 0, sheet: 30, wake: [] });
   nextIdx = 0; raceT = 0; state = 'racing';
   track = [{ x: boat.x, y: boat.y }];
+  recenter(); cam.x = boat.x; cam.y = boat.y;
   $('overlay').hidden = true;
   toast('Go!');
 }
@@ -287,10 +352,12 @@ function update(dt) {
     }
   }
 
-  // camera with look-ahead
-  const lx = boat.x + Math.sin(boat.h) * boat.v * 0.7, ly = boat.y - Math.cos(boat.h) * boat.v * 0.7;
-  cam.x += (lx - cam.x) * Math.min(1, dt * 2.5);
-  cam.y += (ly - cam.y) * Math.min(1, dt * 2.5);
+  // camera with look-ahead, unless the player has panned away
+  if (follow) {
+    const lx = boat.x + Math.sin(boat.h) * boat.v * 0.7, ly = boat.y - Math.cos(boat.h) * boat.v * 0.7;
+    cam.x += (lx - cam.x) * Math.min(1, dt * 2.5);
+    cam.y += (ly - cam.y) * Math.min(1, dt * 2.5);
+  }
 
   // wind streaks (screen-normalised coords)
   const bx = -Math.sin(windFrom), by = Math.cos(windFrom);
@@ -302,6 +369,8 @@ function update(dt) {
   }
 
   // HUD
+  const offDefault = !follow || zoom !== 1; // Recenter shows whenever the view isn't the default boat-follow at 1×
+  if ($('recenter').hidden === offDefault) $('recenter').hidden = !offDefault;
   $('spd').innerHTML = `${(boat.v / 12).toFixed(1)}<small>kn</small>`;
   $('wind').innerHTML = `${Math.round(windStr * 14)}<small>kn</small> ${Math.round(twa)}°`;
   $('warrow').style.transform = `rotate(${windFrom / DEG}deg)`;
@@ -326,7 +395,8 @@ function drawWorld(info) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.fillStyle = C['--sea']; ctx.fillRect(0, 0, cw, ch);
   ctx.save();
-  ctx.translate(Math.round(cw / 2 - cam.x), Math.round(ch / 2 - cam.y));
+  if (zoom === 1) ctx.translate(Math.round(cw / 2 - cam.x), Math.round(ch / 2 - cam.y));
+  else { ctx.translate(cw / 2, ch / 2); ctx.scale(zoom, zoom); ctx.translate(-cam.x, -cam.y); }
 
   // shallow band along the shore, then soundings (chart convention: italic depth figures)
   ctx.strokeStyle = C['--sea-shallow']; ctx.lineWidth = 50; ctx.lineJoin = 'round'; ctx.stroke(landPath);
@@ -479,7 +549,7 @@ function drawMinimap() {
 
   // viewport
   c.strokeStyle = 'rgba(234,244,242,.3)'; c.lineWidth = 1 / s;
-  c.strokeRect(cam.x - cw / 2, cam.y - ch / 2, cw, ch);
+  c.strokeRect(cam.x - cw / 2 / zoom, cam.y - ch / 2 / zoom, cw / zoom, ch / zoom);
 
   // sailed course since the start
   if (track.length > 1) {
