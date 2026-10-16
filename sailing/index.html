@@ -191,7 +191,13 @@ let cam = { x: boat.x, y: boat.y - 100 };
 let zoom = 1, follow = true; // follow: camera tracks the boat; false once the player pans
 const ZMAX = 3;
 const minZoom = () => Math.min(1, Math.min(cw / W, ch / H) * 0.9);
-const clampCam = () => { cam.x = clamp(cam.x, 0, W); cam.y = clamp(cam.y, 0, H); };
+const EDGE = 60; // screen px the boat is kept inside the frame edge
+function clampCam() {
+  cam.x = clamp(cam.x, 0, W); cam.y = clamp(cam.y, 0, H);
+  // then keep the boat in frame; this wins over the map bounds (the boat is always on the map, so both can hold)
+  const rx = Math.max(0, cw / 2 - EDGE) / zoom, ry = Math.max(0, ch / 2 - EDGE) / zoom;
+  cam.x = clamp(cam.x, boat.x - rx, boat.x + rx); cam.y = clamp(cam.y, boat.y - ry, boat.y + ry);
+}
 function zoomAt(f, sx, sy) {
   const wx = cam.x + (sx - cw / 2) / zoom, wy = cam.y + (sy - ch / 2) / zoom;
   zoom = clamp(zoom * f, minZoom(), ZMAX);
@@ -357,7 +363,7 @@ function update(dt) {
     const lx = boat.x + Math.sin(boat.h) * boat.v * 0.7, ly = boat.y - Math.cos(boat.h) * boat.v * 0.7;
     cam.x += (lx - cam.x) * Math.min(1, dt * 2.5);
     cam.y += (ly - cam.y) * Math.min(1, dt * 2.5);
-  }
+  } else clampCam(); // boat keeps sailing: drag the free camera along so it never leaves the frame
 
   // wind streaks (screen-normalised coords)
   const bx = -Math.sin(windFrom), by = Math.cos(windFrom);
