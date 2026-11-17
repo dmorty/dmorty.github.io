@@ -142,7 +142,7 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
       <kbd>↑ / ↓</kbd><span>Trim in / ease out the sail</span>
       <kbd>Drag · scroll</kbd><span>Look around the course (pinch or + / − to zoom, C to recenter)</span>
     </div>
-    <p id="tips">Cross the start line, then round every mark in order: green marks are left to starboard, red marks to port. You can't sail within 40° of the wind (the shaded wedge), so tack upwind. Keep the trim needle in the green band and keep off the shore: running aground stops you dead.</p>
+    <p id="tips">Cross the start line, then round every mark in order: green marks are left to starboard, red marks to port. You can't sail within 30° of the wind (the shaded wedge), so tack upwind. Keep the trim needle in the green band and keep off the shore: running aground stops you dead.</p>
     <button class="cta" id="start">Start race</button>
     <p class="fine">Unofficial fan game. Courses are from the RSYS 2026-2027 Spring &amp; Summer Series sailing instructions; mark, start and finish positions are approximate.</p>
   </div>
@@ -304,9 +304,10 @@ let auto = false;
 const particles = Array.from({ length: 90 }, () => ({ x: rnd(), y: rnd(), l: 10 + rnd() * 18 }));
 
 // Polar: fraction of max speed by true wind angle (degrees)
+const NOGO = 30; // no-go zone: degrees either side of the wind the boat cannot sail
 function polar(twa) {
-  if (twa < 40) return 0;
-  if (twa < 60) return 0.75 * (twa - 40) / 20;
+  if (twa < NOGO) return 0;
+  if (twa < 60) return 0.75 * (twa - NOGO) / (60 - NOGO);
   if (twa < 105) return 0.75 + 0.25 * (twa - 60) / 45;
   return 1 - 0.35 * (twa - 105) / 75;
 }
@@ -428,7 +429,7 @@ function finish() {
   if (rec) { bests[c.key] = raceT; store('rsysBest', bests); }
   $('headline').textContent = rec ? 'New best time' : 'Finished';
   $('result').textContent = fmt(raceT); $('result').hidden = false;
-  $('blurb').textContent = `Division ${c.division}, course ${c.num} in a ${c.wind.name} breeze${c.shortened ? ', shortened' : ''}. Best: ${fmt(bests[c.key])}. Tip: upwind, sail at about 45–50° to the wind and tack as few times as you can.`;
+  $('blurb').textContent = `Division ${c.division}, course ${c.num} in a ${c.wind.name} breeze${c.shortened ? ', shortened' : ''}. Best: ${fmt(bests[c.key])}. Tip: upwind, sail at about 60° to the wind and tack as few times as you can.`;
   $('help').hidden = true; $('tips').hidden = true;
   $('start').textContent = 'Race again';
   if (setup.wind === 'RC') { rcWind = rcPick(); applySetup(); } else renderSheet(); // a new pick from the race committee for the next race
@@ -514,12 +515,12 @@ function update(dt) {
   $('zone').style.width = ((z1 - z0) / 90 * 100) + '%';
   $('needle').style.left = (boat.sheet / 90 * 100) + '%';
   let st;
-  if (twa < 40) st = 'In irons: bear away from the wind';
+  if (twa < NOGO) st = 'In irons: bear away from the wind';
   else if (boat.sheet > opt + 8) st = 'Luffing: trim in ↑';
   else if (boat.sheet < opt - 12) st = 'Over-trimmed: ease ↓';
   else st = 'Sail drawing well';
   $('trimstate').textContent = st;
-  $('trimstate').style.color = twa < 40 || eff < 0.6 ? 'var(--amber)' : 'var(--on-panel)';
+  $('trimstate').style.color = twa < NOGO || eff < 0.6 ? 'var(--amber)' : 'var(--on-panel)';
   return { twa, rel, eff };
 }
 
@@ -573,9 +574,9 @@ function drawWorld(info) {
 
   // no-go wedge
   ctx.save(); ctx.translate(boat.x, boat.y);
-  ctx.fillStyle = info.twa < 40 ? 'rgba(210,69,47,.22)' : 'rgba(18,50,59,.09)';
+  ctx.fillStyle = info.twa < NOGO ? 'rgba(210,69,47,.22)' : 'rgba(18,50,59,.09)';
   ctx.beginPath(); ctx.moveTo(0, 0);
-  ctx.arc(0, 0, 95, windFrom - Math.PI / 2 - 40 * DEG, windFrom - Math.PI / 2 + 40 * DEG); ctx.closePath(); ctx.fill();
+  ctx.arc(0, 0, 95, windFrom - Math.PI / 2 - NOGO * DEG, windFrom - Math.PI / 2 + NOGO * DEG); ctx.closePath(); ctx.fill();
   ctx.restore();
 
   // pointer to next mark
@@ -671,7 +672,7 @@ function drawBoat(info) {
   const L = 30;
   const mx = 0, my = -8;
   const ex = side * Math.sin(b) * L, ey = my + Math.cos(b) * L;
-  const luff = info.twa < 40 || boat.sheet > optimalSheet(info.twa) + 8;
+  const luff = info.twa < NOGO || boat.sheet > optimalSheet(info.twa) + 8;
   const bulge = luff ? Math.sin(t * 38) * 4 : 7 * Math.min(1, info.eff + 0.2);
   const nx = -(ey - my) / L, ny = (ex - mx) / L;
   const cx = (mx + ex) / 2 + nx * bulge * -side, cy = (my + ey) / 2 + ny * bulge * -side;
