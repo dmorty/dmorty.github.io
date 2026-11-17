@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
-<title>Harbour Buoy Race</title>
+<title>RSYS Harbour Race</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:ital,wght@0,500;1,400&display=swap">
@@ -66,11 +66,21 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
 .btn:focus-visible, .cta:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
 
 .overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(18,50,59,.35); }
-.card { background: var(--sail); color: var(--ink); max-width: 420px; width: 100%; border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(18,50,59,.35); display: grid; gap: 14px; }
+.card { background: var(--sail); color: var(--ink); max-width: 440px; width: 100%; max-height: calc(100dvh - 32px); overflow-y: auto; touch-action: pan-y; box-sizing: border-box; border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(18,50,59,.35); display: grid; gap: 14px; }
 .card h1 { font-family: var(--font-display); font-weight: 800; font-size: 40px; line-height: .95; margin: 0; text-transform: uppercase; letter-spacing: .01em; text-wrap: balance; }
 .card p { margin: 0; line-height: 1.5; }
 .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; }
 .keys kbd { font-family: var(--font-mono); font-size: 12px; background: var(--sea); border-radius: 4px; padding: 2px 6px; white-space: nowrap; }
+.setup { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; }
+.setup label { display: grid; gap: 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: rgba(18,50,59,.75); }
+.setup select { font: 700 15px var(--font-body); color: var(--ink); background: var(--sea-shallow); border: 1px solid var(--ink-soft); border-radius: 8px; padding: 8px; min-width: 0; }
+.setup .check { display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 0; text-transform: none; color: var(--ink); cursor: pointer; }
+.setup .check input { accent-color: var(--red); width: 16px; height: 16px; margin: 0; flex: none; }
+.setup select:focus-visible, .setup input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.sheet { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.6; background: var(--sea-shallow); border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
+.sheet b { font-family: var(--font-body); font-size: 14px; }
+.fine { font-size: 12px; color: rgba(18,50,59,.75); }
+@media (max-width: 380px) { .setup { grid-template-columns: 1fr; } }
 .result { font-family: var(--font-mono); font-size: 32px; font-variant-numeric: tabular-nums; }
 .cta { font-family: var(--font-display); font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: .04em; background: var(--red); color: var(--sail); border: 0; border-radius: 10px; padding: 12px; cursor: pointer; }
 .toast { position: fixed; left: 50%; top: 42%; transform: translateX(-50%); font-family: var(--font-display); font-weight: 800; font-size: 34px; text-transform: uppercase; color: var(--ink); text-shadow: 0 2px 0 var(--sail); pointer-events: none; transition: opacity .4s; }
@@ -117,19 +127,29 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
 
 <div class="overlay" id="overlay">
   <div class="card" id="card">
-    <h1>Harbour Buoy Race</h1>
-    <p>Race across Sydney Harbour: round Shark Island, Bradleys Head and Fort Denison in order, then head back east to the finish. Wind blows from the top of the chart (north) and shifts as you go.</p>
-    <div class="keys">
+    <h1 id="headline">RSYS Harbour Race</h1>
+    <div class="result" id="result" hidden></div>
+    <p id="blurb">Sail the Royal Sydney Yacht Squadron Saturday courses on Sydney Harbour. Pick your division and the breeze, and the race committee signals the course from the sailing instructions.</p>
+    <div class="setup">
+      <label>Division <select id="division"></select></label>
+      <label>Wind <select id="windsel"></select></label>
+      <label class="check"><input type="checkbox" id="shortened"> Shortened course (flag S)</label>
+      <label class="check"><input type="checkbox" id="kirribilli"> Kirribilli finish (flag O)</label>
+    </div>
+    <div class="sheet" id="sheet" aria-live="polite"></div>
+    <div class="keys" id="help">
       <kbd>← →</kbd><span>Steer (or Port / Stbd buttons)</span>
       <kbd>↑ / ↓</kbd><span>Trim in / ease out the sail</span>
       <kbd>Drag · scroll</kbd><span>Look around the course (pinch or + / − to zoom, C to recenter)</span>
     </div>
-    <p>You can't sail within 40° of the wind (the shaded wedge). To reach the top mark, zigzag upwind by tacking. Keep the trim needle in the green band, and keep off the shore: running aground stops you dead.</p>
+    <p id="tips">Cross the start line, then round every mark in order: green marks are left to starboard, red marks to port. You can't sail within 40° of the wind (the shaded wedge), so tack upwind. Keep the trim needle in the green band and keep off the shore: running aground stops you dead.</p>
     <button class="cta" id="start">Start race</button>
+    <p class="fine">Unofficial fan game. Courses are from the RSYS 2026-2027 Spring &amp; Summer Series sailing instructions; mark, start and finish positions are approximate.</p>
   </div>
 </div>
 
 <script src="harbour-data.js"></script>
+<script src="rsys-courses.js"></script>
 <script>
 (() => {
 const DEG = Math.PI / 180;
@@ -153,8 +173,6 @@ const $ = id => document.getElementById(id);
 const norm = a => { while (a > Math.PI) a -= 2 * Math.PI; while (a <= -Math.PI) a += 2 * Math.PI; return a; };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-const marks = MAP.marks;
-const START = { x: MAP.start.x, y: MAP.start.y, h: MAP.start.h * DEG };
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const C = {}; ['--sea','--sea-shallow','--ink','--ink-soft','--red','--green','--amber','--sail','--land'].forEach(k => C[k] = css(k));
 
@@ -179,13 +197,87 @@ const isLand = (x, y) => {
 };
 const lonAt = x => MAP.lon0 + x * MAP.lonPerUnit, latAt = y => MAP.latTop - y * MAP.latPerUnit;
 
+// RSYS course sheet (rsys-courses.js): marks projected onto the chart, and a generator that turns a sheet line into a course
+const RS = window.RSYS;
+const toXY = p => ({ x: (p.lon - MAP.lon0) / MAP.lonPerUnit, y: (MAP.latTop - p.lat) / MAP.latPerUnit });
+const MARKS = Object.entries(RS.marks).map(([code, m]) => ({ code, name: m.name, ...toXY(m) }));
+const markAt = code => MARKS.find(m => m.code === code);
+for (const m of MARKS) if (isLand(m.x, m.y)) console.warn(`Mark ${m.code} is charted on land`);
+const LINE = 70, GATE = 160; // half-length of the start/finish lines; length of a mark's rounding gate (world units)
+const unit = (x, y) => { const l = Math.hypot(x, y) || 1; return { x: x / l, y: y / l }; };
+// how far (up to len) you can go from p along unit vector d before reaching land
+const reach = (p, d, len) => { let r = 0; while (r < len && !isLand(p.x + d.x * (r + 5), p.y + d.y * (r + 5))) r += 5; return r; };
+const cr = (ax, ay, bx, by) => ax * by - ay * bx;
+// do segments p-q and a-b cross?
+function segHit(p, q, a, b) {
+  const d1 = cr(b.x - a.x, b.y - a.y, p.x - a.x, p.y - a.y), d2 = cr(b.x - a.x, b.y - a.y, q.x - a.x, q.y - a.y);
+  const d3 = cr(q.x - p.x, q.y - p.y, a.x - p.x, a.y - p.y), d4 = cr(q.x - p.x, q.y - p.y, b.x - p.x, b.y - p.y);
+  return (d1 > 0) !== (d2 > 0) && (d3 > 0) !== (d4 > 0);
+}
+// "DB(P) – *KP(P) - SM" → marks in order; (P) = leave to port (otherwise starboard), * = shortened-course mark
+function parseMarks(line) {
+  return line.split(/\s*[–—-]\s*/).map(tok => {
+    const m = /^(\*?)\s*([A-Z][A-Z0-9]*)\s*(\(P\))?\)?$/.exec(tok.trim());
+    if (!m || !markAt(m[2])) throw new Error(`Unknown mark "${tok}" in "${line}"`);
+    return { code: m[2], port: !!m[3], short: !!m[1] };
+  });
+}
+function buildCourse({ division, wind, shortened, kirribilli }) {
+  const w = RS.winds.find(x => x.name === wind) || RS.winds[0];
+  if (!RS.divisions[division]) division = Object.keys(RS.divisions)[0];
+  const def = RS.divisions[division][w.course];
+  let list = parseMarks(def.marks);
+  if (shortened) list = list.slice(0, list.findIndex(m => m.short) + 1); // flag S: finish after the * mark
+  const finishName = kirribilli ? 'Kirribilli' : def.finish;             // flag O: Kirribilli finish
+  const wb = w.bearing * DEG, up = { x: Math.sin(wb), y: -Math.cos(wb) }; // up: unit vector pointing upwind
+  const s = toXY(RS.starts[def.start]), f = toXY(RS.finishes[finishName]);
+  const legs = list.map(m => ({ ...m, ...markAt(m.code) }));
+  const pts = [s, ...legs, f], last = legs[legs.length - 1];
+  // a line across direction dir, centred on c and stopping short of the shore; it is crossed by sailing along dir
+  const line = (c, dir) => {
+    const ra = reach(c, { x: dir.y, y: -dir.x }, LINE), rb = reach(c, { x: -dir.y, y: dir.x }, LINE);
+    return { x: c.x, y: c.y, dir, a: { x: c.x + dir.y * ra, y: c.y - dir.x * ra }, b: { x: c.x - dir.y * rb, y: c.y + dir.x * rb } };
+  };
+  const objs = [{ kind: 'start', label: 'Start line', ...line(s, up) }]; // start line square to the wind
+  legs.forEach((m, i) => {
+    // Rounding gate: a ray from the mark along the outside of the turn. The mark counts when the boat crosses it
+    // while circling the mark the right way (anticlockwise on the chart = mark left to port).
+    const A = pts[i], B = pts[i + 2];
+    const uin = unit(m.x - A.x, m.y - A.y), uout = unit(B.x - m.x, B.y - m.y);
+    let g = { x: uin.x - uout.x, y: uin.y - uout.y };
+    if (Math.hypot(g.x, g.y) < 0.2) g = m.port ? { x: -uin.y, y: uin.x } : { x: uin.y, y: -uin.x }; // straight on: gate abeam, on the boat's side
+    g = unit(g.x, g.y);
+    const room = reach(m, g, GATE), len = Math.max(30, room); // gate stops at the shore
+    if (room < 30) console.warn(`${m.code} of division ${division} course ${w.course} is hard against the shore`);
+    objs.push({ kind: 'mark', label: m.code + (m.port ? ' (P)' : ''), ...m, a: { x: m.x + g.x * 10, y: m.y + g.y * 10 }, b: { x: m.x + g.x * len, y: m.y + g.y * len } });
+  });
+  objs.push({ kind: 'finish', label: 'Finish', ...line(f, unit(f.x - last.x, f.y - last.y)) });
+  for (const o of [objs[0], objs[objs.length - 1]]) if (Math.hypot(o.a.x - o.b.x, o.a.y - o.b.y) < LINE) console.warn(`${o.label} of division ${division} course ${w.course} is squeezed by the shore`);
+  let back = 70; while (back > 20 && isLand(s.x - up.x * back, s.y - up.y * back)) back -= 10;
+  const modified = shortened || finishName !== def.finish;
+  const charted = pts.slice(1).reduce((d, p, i) => d + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0) * MAP.mPerUnit / 1852;
+  return {
+    key: `${division}-${w.name}${shortened ? '-S' : ''}${finishName !== def.finish ? '-O' : ''}`,
+    division, num: w.course, wind: w, windBase: wb, list, objs, pts, shortened, modified,
+    startName: def.start, finishName, nm: modified ? charted : def.nm, codes: new Set(list.map(m => m.code)),
+    spawn: { x: s.x - up.x * back, y: s.y - up.y * back, h: norm(wb - 50 * DEG) }, // behind the line, close-hauled on starboard tack
+  };
+}
+const stored = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const setup = Object.assign({ division: '1', wind: 'NE', shortened: false, kirribilli: false }, stored('rsysSetup', {}));
+const bests = stored('rsysBest', {}); // best time per course key
+const rcPick = () => RS.winds[Math.floor(Math.random() * RS.winds.length)].name;
+let rcWind = rcPick(); // the breeze when the wind choice is "Race committee's pick"
+let course = buildCourse({ ...setup, wind: setup.wind === 'RC' ? rcWind : setup.wind });
+
 // Chart soundings (depth figures in metres), fixed seed, kept clear of the shore
 let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
 const soundings = Array.from({ length: 900 }, () => ({ x: rnd() * W, y: rnd() * H, d: Math.round(6 + rnd() * 24) }))
   .filter(s => [[0, 0], [40, 0], [-40, 0], [0, 40], [0, -40]].every(([dx, dy]) => !isLand(s.x + dx, s.y + dy)));
 
-const boat = { x: START.x, y: START.y, h: START.h, v: 0, rudder: 0, sheet: 30, wake: [] };
-let windFrom = 0, windStr = 1, t = 0, raceT = 0, state = 'ready', nextIdx = 0, wakeT = 0, groundT = -9;
+const boat = { ...course.spawn, v: 0, rudder: 0, sheet: 30, wake: [] };
+let windFrom = course.windBase, windStr = 1, t = 0, raceT = 0, state = 'ready', objIdx = 0, wakeT = 0, groundT = -9; // objIdx: next start line / mark / finish in course.objs
 let track = []; // full sailed course for the minimap, reset each race
 let cam = { x: boat.x, y: boat.y - 100 };
 let zoom = 1, follow = true; // follow: camera tracks the boat; false once the player pans
@@ -208,7 +300,6 @@ function recenter() { follow = true; zoom = 1; }
 function detach() { follow = false; }
 const input = { left: 0, right: 0, trim: 0, ease: 0 };
 let auto = false;
-let best = null; try { best = parseFloat(localStorage.getItem('buoyBest')) || null; } catch (e) {}
 
 const particles = Array.from({ length: 90 }, () => ({ x: rnd(), y: rnd(), l: 10 + rnd() * 18 }));
 
@@ -288,11 +379,14 @@ canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
 $('start').addEventListener('click', startRace);
 
-function startRace() {
-  Object.assign(boat, { x: START.x, y: START.y, h: START.h, v: 0, rudder: 0, sheet: 30, wake: [] });
-  nextIdx = 0; raceT = 0; state = 'racing';
+function resetBoat() {
+  Object.assign(boat, { ...course.spawn, v: 0, rudder: 0, sheet: 30, wake: [] });
   track = [{ x: boat.x, y: boat.y }];
   recenter(); cam.x = boat.x; cam.y = boat.y;
+}
+function startRace() {
+  resetBoat();
+  objIdx = 0; raceT = 0; state = 'racing';
   $('overlay').hidden = true;
   toast('Go!');
 }
@@ -300,21 +394,50 @@ let toastTimer;
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.opacity = 0, 1200); }
 const fmt = s => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
 
+// Course picker on the start card
+const sheetLine = c => c.list.map(m => (m.short ? '*' : '') + m.code + (m.port ? '(P)' : '')).join(' – ');
+function renderSheet() {
+  const c = course, b = bests[c.key];
+  $('sheet').innerHTML = `<b>Division ${c.division} · Course ${c.num} · ${c.wind.name} wind</b><br>`
+    + `Start: vicinity of ${c.startName}<br>${sheetLine(c)}<br>`
+    + `Finish: vicinity of ${c.finishName}${c.shortened ? ' (shortened at *)' : ''}<br>`
+    + `${c.modified ? 'About' : 'Approximately'} ${c.nm.toFixed(1)} nm${b ? ` · best ${fmt(b)}` : ''}`;
+}
+function applySetup() {
+  course = buildCourse({ ...setup, wind: setup.wind === 'RC' ? rcWind : setup.wind });
+  store('rsysSetup', setup);
+  if (state !== 'racing') resetBoat(); // show the new start area behind the card
+  renderSheet();
+}
+$('division').innerHTML = Object.keys(RS.divisions).map(d => `<option value="${d}">Division ${d}</option>`).join('');
+$('windsel').innerHTML = `<option value="RC">Race committee's pick</option>`
+  + RS.winds.map(w => `<option value="${w.name}">${w.name} (course ${w.course})</option>`).join('');
+if (!RS.divisions[setup.division]) setup.division = Object.keys(RS.divisions)[0];
+if (setup.wind !== 'RC' && !RS.winds.some(w => w.name === setup.wind)) setup.wind = 'RC';
+$('division').value = setup.division; $('windsel').value = setup.wind;
+$('shortened').checked = !!setup.shortened; $('kirribilli').checked = !!setup.kirribilli;
+$('division').addEventListener('change', e => { setup.division = e.target.value; applySetup(); });
+$('windsel').addEventListener('change', e => { setup.wind = e.target.value; if (setup.wind === 'RC') rcWind = rcPick(); applySetup(); });
+$('shortened').addEventListener('change', e => { setup.shortened = e.target.checked; applySetup(); });
+$('kirribilli').addEventListener('change', e => { setup.kirribilli = e.target.checked; applySetup(); });
+renderSheet();
+
 function finish() {
   state = 'finished';
-  let rec = false;
-  if (!best || raceT < best) { best = raceT; rec = true; try { localStorage.setItem('buoyBest', String(best)); } catch (e) {} }
-  $('card').innerHTML = `<h1>${rec ? 'New best time' : 'Finished'}</h1>
-    <div class="result">${fmt(raceT)}</div>
-    <p>Best: ${fmt(best)}. Tip: upwind, sail at about 45–50° to the wind and tack as few times as you can.</p>
-    <button class="cta" id="again">Race again</button>`;
+  const c = course, prev = bests[c.key], rec = !prev || raceT < prev;
+  if (rec) { bests[c.key] = raceT; store('rsysBest', bests); }
+  $('headline').textContent = rec ? 'New best time' : 'Finished';
+  $('result').textContent = fmt(raceT); $('result').hidden = false;
+  $('blurb').textContent = `Division ${c.division}, course ${c.num} in a ${c.wind.name} breeze${c.shortened ? ', shortened' : ''}. Best: ${fmt(bests[c.key])}. Tip: upwind, sail at about 45–50° to the wind and tack as few times as you can.`;
+  $('help').hidden = true; $('tips').hidden = true;
+  $('start').textContent = 'Race again';
+  if (setup.wind === 'RC') { rcWind = rcPick(); applySetup(); } else renderSheet(); // a new pick from the race committee for the next race
   $('overlay').hidden = false;
-  $('again').addEventListener('click', startRace);
 }
 
 function update(dt) {
   t += dt;
-  windFrom = 0.22 * Math.sin(t * 0.045) + 0.09 * Math.sin(t * 0.13 + 1);
+  windFrom = course.windBase + 0.22 * Math.sin(t * 0.045) + 0.09 * Math.sin(t * 0.13 + 1);
   windStr = 0.85 + 0.15 * Math.sin(t * 0.07 + 2);
 
   const racing = state === 'racing';
@@ -350,11 +473,14 @@ function update(dt) {
     if (Math.hypot(boat.x - p.x, boat.y - p.y) > 12) track.push({ x: boat.x, y: boat.y });
   }
 
+  // next objective: cross the start line upwind, round the mark on its required side, or cross the finish line
   if (racing) {
-    const m = marks[nextIdx];
-    if (Math.hypot(m.x - boat.x, m.y - boat.y) < (m.finish ? 90 : 70)) {
-      if (m.finish) finish();
-      else { toast(`${m.name} ✓`); nextIdx++; }
+    const o = course.objs[objIdx], dx = boat.x - px, dy = boat.y - py;
+    if (segHit({ x: px, y: py }, boat, o.a, o.b)) {
+      const ok = o.kind === 'mark' ? (cr(px - o.x, py - o.y, dx, dy) < 0) === o.port : dx * o.dir.x + dy * o.dir.y > 0;
+      if (!ok) { if (o.kind === 'mark') toast(`Leave ${o.code} to ${o.port ? 'port' : 'starboard'}`); }
+      else if (o.kind === 'finish') finish();
+      else { toast(o.kind === 'start' ? 'Started' : `${o.code} ✓`); objIdx++; }
     }
   }
 
@@ -381,7 +507,7 @@ function update(dt) {
   $('wind').innerHTML = `${Math.round(windStr * 14)}<small>kn</small> ${Math.round(twa)}°`;
   $('warrow').style.transform = `rotate(${windFrom / DEG}deg)`;
   $('time').textContent = fmt(raceT);
-  $('next').textContent = state === 'racing' ? `${nextIdx + 1}/${marks.length} ${marks[nextIdx].name}` : '—';
+  $('next').textContent = state === 'racing' ? `${objIdx}/${course.objs.length - 1} ${course.objs[objIdx].label}` : '—';
   const opt = optimalSheet(twa);
   const z0 = clamp(opt - 12, 0, 90), z1 = clamp(opt + 8, 0, 90);
   $('zone').style.left = (z0 / 90 * 100) + '%';
@@ -435,26 +561,7 @@ function drawWorld(info) {
   // boundary
   ctx.strokeStyle = C['--ink']; ctx.lineWidth = 3; ctx.strokeRect(0, 0, W, H);
 
-  // course line
-  ctx.setLineDash([10, 10]); ctx.strokeStyle = 'rgba(18,50,59,.25)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(START.x, START.y); marks.forEach(m => ctx.lineTo(m.x, m.y)); ctx.stroke(); ctx.setLineDash([]);
-
-  // marks
-  marks.forEach((m, i) => {
-    const done = state === 'racing' && i < nextIdx, active = state === 'racing' && i === nextIdx;
-    if (m.finish) {
-      ctx.strokeStyle = C['--ink']; ctx.lineWidth = 3; ctx.setLineDash([6, 6]);
-      ctx.beginPath(); ctx.moveTo(m.x - 90, m.y); ctx.lineTo(m.x + 90, m.y); ctx.stroke(); ctx.setLineDash([]);
-      [-90, 90].forEach(o => { ctx.fillStyle = C['--amber']; ctx.beginPath(); ctx.arc(m.x + o, m.y, 9, 0, 7); ctx.fill(); });
-    } else {
-      if (active) { ctx.strokeStyle = C[m.col]; ctx.lineWidth = 2; ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4); ctx.beginPath(); ctx.arc(m.x, m.y, 70, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
-      ctx.fillStyle = done ? 'rgba(18,50,59,.3)' : C[m.col];
-      ctx.beginPath(); ctx.arc(m.x, m.y, 13, 0, 7); ctx.fill();
-      ctx.strokeStyle = C['--sail']; ctx.lineWidth = 2; ctx.stroke();
-    }
-    ctx.fillStyle = C['--ink']; ctx.font = '700 13px Atkinson Hyperlegible, sans-serif';
-    ctx.fillText(`${i + 1} ${m.name}`, m.x + 18, m.y - 16);
-  });
+  drawCourse(ctx, 1, false);
 
   // wake
   ctx.strokeStyle = 'rgba(251,250,245,.8)';
@@ -473,10 +580,10 @@ function drawWorld(info) {
 
   // pointer to next mark
   if (state === 'racing') {
-    const m = marks[nextIdx];
+    const m = course.objs[objIdx];
     const a = Math.atan2(m.y - boat.y, m.x - boat.x);
     ctx.save(); ctx.translate(boat.x + Math.cos(a) * 52, boat.y + Math.sin(a) * 52); ctx.rotate(a);
-    ctx.fillStyle = C[m.col]; ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, -6); ctx.lineTo(-5, 6); ctx.fill();
+    ctx.fillStyle = objCol(m); ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(-5, -6); ctx.lineTo(-5, 6); ctx.fill();
     ctx.restore();
   }
 
@@ -489,6 +596,62 @@ function drawWorld(info) {
   for (const p of particles) {
     const x = p.x * cw, y = p.y * ch;
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - bx * p.l, y - by * p.l); ctx.stroke();
+  }
+}
+
+const objCol = o => o.kind !== 'mark' ? C['--amber'] : o.port ? C['--red'] : C['--green']; // port red, starboard green
+
+// Course overlay for the chart and the minimap. u = world units per on-screen unit, so sizes stay legible on the minimap.
+function drawCourse(c, u, mini) {
+  const racing = state === 'racing', objs = course.objs, cur = objs[objIdx];
+  const dash = mini ? 60 : 10, lw = mini ? u : 2;
+  // the whole course, with the current leg picked out
+  c.setLineDash([dash, dash]); c.strokeStyle = mini ? 'rgba(234,244,242,.35)' : 'rgba(18,50,59,.25)'; c.lineWidth = lw;
+  c.beginPath(); course.pts.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y)); c.stroke();
+  if (racing && objIdx > 0) {
+    const a = course.pts[objIdx - 1], b = course.pts[objIdx];
+    c.strokeStyle = mini ? 'rgba(234,244,242,.9)' : 'rgba(18,50,59,.65)'; c.lineWidth = lw * 1.5;
+    c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.stroke();
+  }
+  c.setLineDash([]);
+
+  // start and finish lines
+  c.font = '700 13px Atkinson Hyperlegible, sans-serif';
+  [objs[0], objs[objs.length - 1]].forEach((o, k) => {
+    c.globalAlpha = racing && (k ? objs.length - 1 : 0) < objIdx ? 0.3 : 1;
+    c.strokeStyle = mini ? C['--amber'] : C['--ink']; c.lineWidth = mini ? 2 * u : 3;
+    if (!mini) c.setLineDash([6, 6]);
+    c.beginPath(); c.moveTo(o.a.x, o.a.y); c.lineTo(o.b.x, o.b.y); c.stroke(); c.setLineDash([]);
+    if (!mini) {
+      c.fillStyle = C['--amber'];
+      for (const e of [o.a, o.b]) { c.beginPath(); c.arc(e.x, e.y, 9, 0, 7); c.fill(); }
+      c.fillStyle = C['--ink']; c.fillText(k ? 'Finish' : 'Start', o.b.x + 14, o.b.y - 12);
+    }
+    c.globalAlpha = 1;
+  });
+
+  // marks: every charted buoy, with the ones on this course coloured by the side of their next rounding
+  for (const m of MARKS) {
+    if (!course.codes.has(m.code)) {
+      if (mini) continue;
+      c.fillStyle = 'rgba(18,50,59,.22)'; c.beginPath(); c.arc(m.x, m.y, 7, 0, 7); c.fill();
+      c.fillStyle = C['--ink-soft']; c.font = '700 11px Atkinson Hyperlegible, sans-serif'; c.fillText(m.code, m.x + 11, m.y - 9);
+      continue;
+    }
+    const next = objs.find((o, i) => o.kind === 'mark' && o.code === m.code && (!racing || i >= objIdx));
+    const active = racing && cur.kind === 'mark' && cur.code === m.code;
+    if (active) {
+      c.strokeStyle = objCol(cur); c.lineWidth = mini ? 1.5 * u : 2; c.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4);
+      c.beginPath(); c.arc(m.x, m.y, mini ? 7 * u : 40, 0, 7); c.stroke();
+      if (!mini) { c.setLineDash([8, 6]); c.beginPath(); c.moveTo(cur.a.x, cur.a.y); c.lineTo(cur.b.x, cur.b.y); c.stroke(); c.setLineDash([]); } // rounding gate
+      c.globalAlpha = 1;
+    }
+    c.fillStyle = next ? objCol(next) : mini ? 'rgba(159,192,192,.4)' : 'rgba(18,50,59,.3)';
+    c.beginPath(); c.arc(m.x, m.y, mini ? 3.5 * u : 13, 0, 7); c.fill();
+    if (mini) continue;
+    c.strokeStyle = C['--sail']; c.lineWidth = 2; c.stroke();
+    c.fillStyle = C['--ink']; c.font = '700 13px Atkinson Hyperlegible, sans-serif';
+    c.fillText(active ? `${m.code} · leave to ${cur.port ? 'port' : 'starboard'}` : m.code, m.x + 18, m.y - 16);
   }
 }
 
@@ -532,26 +695,7 @@ function drawMinimap() {
 
   c.fillStyle = C['--land']; c.globalAlpha = 0.85; c.fill(landPath, 'evenodd'); c.globalAlpha = 1;
 
-  // course line
-  c.setLineDash([60, 60]); c.strokeStyle = 'rgba(234,244,242,.35)'; c.lineWidth = 1 / s;
-  c.beginPath(); c.moveTo(START.x, START.y); marks.forEach(m => c.lineTo(m.x, m.y)); c.stroke(); c.setLineDash([]);
-
-  // marks
-  marks.forEach((m, i) => {
-    const done = state === 'racing' && i < nextIdx, active = state === 'racing' && i === nextIdx;
-    if (m.finish) {
-      c.strokeStyle = C['--amber']; c.lineWidth = 2 / s;
-      c.beginPath(); c.moveTo(m.x - 90, m.y); c.lineTo(m.x + 90, m.y); c.stroke();
-    } else {
-      c.fillStyle = done ? 'rgba(159,192,192,.4)' : C[m.col];
-      c.beginPath(); c.arc(m.x, m.y, 3.5 / s, 0, 7); c.fill();
-    }
-    if (active) {
-      c.strokeStyle = m.finish ? C['--amber'] : C[m.col]; c.lineWidth = 1.5 / s;
-      c.globalAlpha = 0.5 + 0.3 * Math.sin(t * 4);
-      c.beginPath(); c.arc(m.x, m.y, 7 / s, 0, 7); c.stroke(); c.globalAlpha = 1;
-    }
-  });
+  drawCourse(c, 1 / s, true);
 
   // viewport
   c.strokeStyle = 'rgba(234,244,242,.3)'; c.lineWidth = 1 / s;
