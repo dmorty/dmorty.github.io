@@ -12,6 +12,24 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **Questions:** (if blocked or unsure)
 -->
 
+## 2026-11-21 — Add a start boat to one end of the start line
+
+- **Branch:** `add-start-boat`
+- **What changed:**
+  - **Course:** `buildCourse()` now places a start boat (`course.startBoat`) 22 units beyond the starboard end of the start line. That is the right-hand end looking upwind, where the race committee boat usually sits. The other end stays an orange pin buoy, and the "Start" label moved to the pin end.
+  - **Drawing (`js/render.js`):** the start boat is drawn as a motor cruiser lying head to wind. It swings with the wind shifts and flies a fluttering orange flag. It also shows as a dot on the minimap, which fades once the race has started.
+  - **Physics (`js/boat.js`):** the start boat is solid, an ellipse a little larger than the drawn hull. Hitting it stops the boat like running aground, with a "Hit the start boat!" toast and the aground thud.
+  - The new to-do item was added to `CLAUDE.md` by the user.
+- **Testing:**
+  - On all 60 start configurations (every division, wind and Kirribilli option), no point of the start boat's hull is on land, and every start line keeps its full length.
+  - `race_test.py` has a new check: sailing along the start line into the start boat stops the boat outside its hull, with the toast. All checks pass, with no console errors.
+  - Checked in a zoomed screenshot of the start area.
+- **To review:**
+  - The start boat isn't hit by its own wake and doesn't push the player's boat away. Hitting it is the same as touching the shore.
+  - There's no penalty for touching it, as there would be under the racing rules.
+  - On the default Division 1 NE course, the boat spawns on top of mark N3. This was already the case before this task.
+- **Next steps:** link to the game from the site's home page (`index.md`).
+
 ## 2026-11-21 — Add simple sound effects
 
 - **Branch:** `add-sound-effects`

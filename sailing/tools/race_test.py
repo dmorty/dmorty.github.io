@@ -120,6 +120,18 @@ def main():
         step(30)  # let the speed build on the run
         run = slip(60)
         check(abs(run) < abs(close) / 4, f"on a run it barely slips ({run:.1f} units in 1 s)")
+        # the start boat at the starboard end of the start line is solid: sail along the line into it
+        page.evaluate("""import('./js/game.js').then(({ game }) => {
+          const st = game.course.objs[0], sb = game.course.startBoat, l = Math.hypot(st.b.x - st.a.x, st.b.y - st.a.y);
+          const dx = (st.b.x - st.a.x) / l, dy = (st.b.y - st.a.y) / l;
+          game.groundT = -9;
+          Object.assign(game.boat, { x: sb.x - dx * 90, y: sb.y - dy * 90, h: Math.atan2(dx, -dy), v: 120, drift: 0, rudder: 0 });
+        })""")
+        step(60)
+        stopped = page.evaluate("""import('./js/game.js').then(({ game }) => {
+          const sb = game.course.startBoat; return Math.hypot(game.boat.x - sb.x, game.boat.y - sb.y); })""")
+        check(toast() == "Hit the start boat!" and stopped > 20, f"the start boat is solid (stopped {stopped:.0f} units from its centre)")
+
         # M mutes: crossing the start line again makes no sound, and the setting survives a reload
         page.keyboard.press("m"); step(1)
         check(page.text_content("#toast") == "Sound off" and not page.is_checked("#sound"), "M turns sound off")

@@ -7,6 +7,7 @@ export const MARKS = Object.entries(RS.marks).map(([code, m]) => ({ code, name: 
 const markAt = code => MARKS.find(m => m.code === code);
 for (const m of MARKS) if (isLand(m.x, m.y)) console.warn(`Mark ${m.code} is charted on land`);
 const LINE = 70, GATE = 160; // half-length of the start/finish lines; length of a mark's rounding gate (world units)
+const START_BOAT_GAP = 22;  // from the starboard end of the start line to the start boat's centre
 
 // "DB(P) – *KP(P) - SM" → marks in order; (P) = leave to port (otherwise starboard), * = shortened-course mark
 export function parseMarks(line) {
@@ -47,13 +48,18 @@ export function buildCourse({ division, wind, shortened, kirribilli }) {
   });
   objs.push({ kind: 'finish', label: 'Finish', ...line(f, unit(f.x - last.x, f.y - last.y)) });
   for (const o of [objs[0], objs[objs.length - 1]]) if (Math.hypot(o.a.x - o.b.x, o.a.y - o.b.y) < LINE) console.warn(`${o.label} of division ${division} course ${w.course} is squeezed by the shore`);
+  // Start boat (the race committee boat): anchored just beyond the starboard end of the start line, which is the
+  // right-hand end looking upwind (end b). The other end (a) is the pin.
+  const st = objs[0], along = unit(st.b.x - st.a.x, st.b.y - st.a.y);
+  const startBoat = { x: st.b.x + along.x * START_BOAT_GAP, y: st.b.y + along.y * START_BOAT_GAP };
+  if (isLand(startBoat.x, startBoat.y)) console.warn(`The start boat of division ${division} course ${w.course} is on land`);
   let back = 70; while (back > 20 && isLand(s.x - up.x * back, s.y - up.y * back)) back -= 10;
   const modified = shortened || finishName !== def.finish;
   const charted = pts.slice(1).reduce((d, p, i) => d + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0) * MAP.mPerUnit / 1852;
   return {
     key: `${division}-${w.name}${shortened ? '-S' : ''}${finishName !== def.finish ? '-O' : ''}`,
     division, num: w.course, wind: w, windBase: wb, list, objs, pts, shortened, modified,
-    startName: def.start, finishName, nm: modified ? charted : def.nm, codes: new Set(list.map(m => m.code)),
+    startName: def.start, finishName, nm: modified ? charted : def.nm, codes: new Set(list.map(m => m.code)), startBoat,
     spawn: { x: s.x - up.x * back, y: s.y - up.y * back, h: norm(wb - 50 * DEG) }, // behind the line, close-hauled on starboard tack
   };
 }

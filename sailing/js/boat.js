@@ -29,8 +29,16 @@ export function leewayFactor(twa) {
   return clamp((150 - twa) / (150 - 45), 0, 1); // most close-hauled, none on a run
 }
 
+// The start boat lies anchored head to wind; its hull is an ellipse START_BOAT_LEN long and START_BOAT_BEAM wide.
+export const START_BOAT_LEN = 64, START_BOAT_BEAM = 22;
+export function hitsStartBoat(x, y) {
+  const sb = game.course.startBoat, h = game.windFrom, dx = x - sb.x, dy = y - sb.y;
+  const fwd = dx * Math.sin(h) - dy * Math.cos(h), side = dx * Math.cos(h) + dy * Math.sin(h);
+  return (fwd / (START_BOAT_LEN / 2 + 3)) ** 2 + (side / (START_BOAT_BEAM / 2 + 3)) ** 2 < 1;
+}
+
 // One physics step. Returns the sailing info for drawing and the HUD ({ twa, rel, eff }, measured before this
-// step's steering), the position before the move, and whether the boat hit land.
+// step's steering), the position before the move, and whether the boat hit land or the start boat.
 export function stepBoat(dt, racing) {
   const { boat, input } = game;
   const rel = norm(game.windFrom - boat.h);
@@ -53,11 +61,11 @@ export function stepBoat(dt, racing) {
   const px = boat.x, py = boat.y;
   boat.x += (Math.sin(boat.h) * boat.v + Math.cos(boat.h) * boat.drift) * dt;
   boat.y += (-Math.cos(boat.h) * boat.v + Math.sin(boat.h) * boat.drift) * dt;
-  let aground = false;
-  if (isLand(boat.x, boat.y) || isLand(boat.x + Math.sin(boat.h) * 22, boat.y - Math.cos(boat.h) * 22)) {
-    boat.x = px; boat.y = py; boat.v *= 0.2; boat.drift *= 0.2;
-    aground = true;
-  }
+  let aground = false, hitBoat = false;
+  const bowX = boat.x + Math.sin(boat.h) * 22, bowY = boat.y - Math.cos(boat.h) * 22;
+  if (isLand(boat.x, boat.y) || isLand(bowX, bowY)) aground = true;
+  else if (hitsStartBoat(boat.x, boat.y) || hitsStartBoat(bowX, bowY)) hitBoat = true;
+  if (aground || hitBoat) { boat.x = px; boat.y = py; boat.v *= 0.2; boat.drift *= 0.2; }
   if (boat.x < 40 || boat.x > W - 40 || boat.y < 40 || boat.y > H - 40) {
     boat.x = clamp(boat.x, 40, W - 40); boat.y = clamp(boat.y, 40, H - 40); boat.v *= 0.5;
   }
@@ -67,5 +75,5 @@ export function stepBoat(dt, racing) {
     const p = game.track[game.track.length - 1];
     if (Math.hypot(boat.x - p.x, boat.y - p.y) > 12) game.track.push({ x: boat.x, y: boat.y });
   }
-  return { info: { twa, rel, eff }, px, py, aground };
+  return { info: { twa, rel, eff }, px, py, aground, hitBoat };
 }

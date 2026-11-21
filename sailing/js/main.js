@@ -37,8 +37,10 @@ function update(dt) {
 
   const racing = game.state === 'racing';
   if (racing) game.raceT += dt;
-  const { info, px, py, aground } = stepBoat(dt, racing);
-  if (aground && racing && game.t - game.groundT > 2) { game.groundT = game.t; toast('Aground!'); play('aground'); }
+  const { info, px, py, aground, hitBoat } = stepBoat(dt, racing);
+  if ((aground || hitBoat) && racing && game.t - game.groundT > 2) {
+    game.groundT = game.t; toast(aground ? 'Aground!' : 'Hit the start boat!'); play('aground');
+  }
 
   // next objective: cross the start line upwind, round the mark on its required side, or cross the finish line
   if (racing) {

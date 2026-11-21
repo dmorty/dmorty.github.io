@@ -2,7 +2,7 @@
 import { DEG, C } from './util.js';
 import { MAP, W, H, landPath, lonAt, latAt, soundings } from './chart.js';
 import { MARKS } from './course.js';
-import { NOGO, optimalSheet } from './boat.js';
+import { NOGO, optimalSheet, START_BOAT_LEN, START_BOAT_BEAM } from './boat.js';
 import { particles } from './wind.js';
 import { game } from './game.js';
 import { view } from './camera.js';
@@ -47,6 +47,7 @@ export function drawWorld(info) {
   ctx.strokeStyle = C['--ink']; ctx.lineWidth = 3; ctx.strokeRect(0, 0, W, H);
 
   drawCourse(ctx, 1, false);
+  drawStartBoat();
 
   // wake
   ctx.strokeStyle = 'rgba(251,250,245,.8)';
@@ -110,11 +111,16 @@ export function drawCourse(c, u, mini) {
     c.beginPath(); c.moveTo(o.a.x, o.a.y); c.lineTo(o.b.x, o.b.y); c.stroke(); c.setLineDash([]);
     if (!mini) {
       c.fillStyle = C['--amber'];
-      for (const e of [o.a, o.b]) { c.beginPath(); c.arc(e.x, e.y, 9, 0, 7); c.fill(); }
-      c.fillStyle = C['--ink']; c.fillText(k ? 'Finish' : 'Start', o.b.x + 14, o.b.y - 12);
+      for (const e of k ? [o.a, o.b] : [o.a]) { c.beginPath(); c.arc(e.x, e.y, 9, 0, 7); c.fill(); } // the start's other end is the start boat
+      const lab = k ? o.b : o.a;
+      c.fillStyle = C['--ink']; c.fillText(k ? 'Finish' : 'Start', lab.x + 14, lab.y - 12);
     }
     c.globalAlpha = 1;
   });
+  if (mini) { // start boat
+    const sb = course.startBoat; c.fillStyle = C['--sail']; c.globalAlpha = racing && objIdx > 0 ? 0.3 : 1;
+    c.beginPath(); c.arc(sb.x, sb.y, 3 * u, 0, 7); c.fill(); c.globalAlpha = 1;
+  }
 
   // marks: every charted buoy, with the ones on this course coloured by the side of their next rounding
   for (const m of MARKS) {
@@ -139,6 +145,24 @@ export function drawCourse(c, u, mini) {
     c.fillStyle = C['--ink']; c.font = '700 13px Atkinson Hyperlegible, sans-serif';
     c.fillText(active ? `${m.code} · leave to ${cur.port ? 'port' : 'starboard'}` : m.code, m.x + 18, m.y - 16);
   }
+}
+
+// The start boat: a motor cruiser anchored head to wind, flying the orange race committee flag
+function drawStartBoat() {
+  const { ctx } = view, sb = game.course.startBoat, L = START_BOAT_LEN / 2, B = START_BOAT_BEAM / 2;
+  ctx.save(); ctx.translate(sb.x, sb.y); ctx.rotate(game.windFrom);
+  ctx.fillStyle = C['--sail']; ctx.strokeStyle = C['--ink']; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -L);                                  // hull, bow into the wind
+  ctx.bezierCurveTo(B, -L * 0.55, B, L * 0.6, B * 0.85, L); ctx.lineTo(-B * 0.85, L);
+  ctx.bezierCurveTo(-B, L * 0.6, -B, -L * 0.55, 0, -L); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C['--sea-shallow']; ctx.lineWidth = 1.5;             // cabin
+  ctx.beginPath(); ctx.rect(-B * 0.55, -L * 0.2, B * 1.1, L * 0.75); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C['--ink']; ctx.beginPath(); ctx.arc(0, -L * 0.05, 2.5, 0, 7); ctx.fill(); // mast
+  // flag streaming downwind (towards the stern), fluttering
+  const fl = Math.sin(game.t * 9) * 2;
+  ctx.fillStyle = C['--amber']; ctx.strokeStyle = C['--ink']; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, -L * 0.05); ctx.lineTo(7 + fl, -L * 0.05 + 8); ctx.lineTo(-1 - fl, -L * 0.05 + 14); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.restore();
 }
 
 function drawBoat(info) {
