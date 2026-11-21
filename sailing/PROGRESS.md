@@ -12,6 +12,18 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **Questions:** (if blocked or unsure)
 -->
 
+## 2026-11-21 — Link to the game from the site's home page
+
+- **Branch:** `link-game-from-home`
+- **What changed:** The site home page (`index.md`, outside `sailing/`) keeps its "Welcome to DMORTY" heading. The "Page coming soon......" placeholder is replaced with an "RSYS Harbour Race" section: a one-line description and a **Play the RSYS Harbour Race** link to `sailing/`.
+- **Testing:**
+  - The link is relative (`sailing/`), so it works from the site root, where this GitHub Pages user site is served.
+  - The game answers at `/sailing/` on the local server.
+  - Jekyll isn't installed locally, so the rendered home page wasn't previewed. Check it on the live site after merging.
+- **To review:** the placeholder line was removed. Put it back if the home page is meant to say more is coming.
+- **Note:** the user had added a new to-do item above this one ("Once the race has started make the start boat make its way to the finish line and replace one of the pins"). This task was done out of order, and that item went into this commit unticked.
+- **Next steps:** the start boat moving to the finish line, the one remaining to-do item.
+
 ## 2026-11-21 — Add a start boat to one end of the start line
 
 - **Branch:** `add-start-boat`
