@@ -7,7 +7,7 @@ export const MARKS = Object.entries(RS.marks).map(([code, m]) => ({ code, name: 
 const markAt = code => MARKS.find(m => m.code === code);
 for (const m of MARKS) if (isLand(m.x, m.y)) console.warn(`Mark ${m.code} is charted on land`);
 const LINE = 70, GATE = 160; // half-length of the start/finish lines; length of a mark's rounding gate (world units)
-const START_BOAT_GAP = 22;  // from the starboard end of the start line to the start boat's centre
+const START_BOAT_GAP = 22;  // from the end of the start or finish line to the start boat's centre
 
 // "DB(P) – *KP(P) - SM" → marks in order; (P) = leave to port (otherwise starboard), * = shortened-course mark
 export function parseMarks(line) {
@@ -53,13 +53,30 @@ export function buildCourse({ division, wind, shortened, kirribilli }) {
   const st = objs[0], along = unit(st.b.x - st.a.x, st.b.y - st.a.y);
   const startBoat = { x: st.b.x + along.x * START_BOAT_GAP, y: st.b.y + along.y * START_BOAT_GAP };
   if (isLand(startBoat.x, startBoat.y)) console.warn(`The start boat of division ${division} course ${w.course} is on land`);
+  // After the start it anchors just beyond one end of the finish line, in place of that pin: end b if the whole hull
+  // fits in open water there, else end a, moving in closer to the line if neither end has room.
+  const fin = objs[objs.length - 1];
+  const hullClear = p => Array.from({ length: 16 }, (_, k) => k / 16 * 2 * Math.PI).every(a => {
+    const f = Math.cos(a) * 37, sd = Math.sin(a) * 16; // the hull ellipse with a margin, lying head to wind
+    return !isLand(p.x + f * Math.sin(wb) + sd * Math.cos(wb), p.y - f * Math.cos(wb) + sd * Math.sin(wb));
+  });
+  let finishBoat = null;
+  for (const gap of [START_BOAT_GAP, 10, 0]) for (const [end, other] of [['b', 'a'], ['a', 'b']]) {
+    if (finishBoat) break;
+    const e = fin[end], d = unit(e.x - fin[other].x, e.y - fin[other].y), p = { x: e.x + d.x * gap, y: e.y + d.y * gap, end };
+    if (hullClear(p)) finishBoat = p;
+  }
+  if (!finishBoat) {
+    finishBoat = { x: fin.b.x, y: fin.b.y, end: 'b' };
+    console.warn(`No room for the start boat at the finish of division ${division} course ${w.course}`);
+  }
   let back = 70; while (back > 20 && isLand(s.x - up.x * back, s.y - up.y * back)) back -= 10;
   const modified = shortened || finishName !== def.finish;
   const charted = pts.slice(1).reduce((d, p, i) => d + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0) * MAP.mPerUnit / 1852;
   return {
     key: `${division}-${w.name}${shortened ? '-S' : ''}${finishName !== def.finish ? '-O' : ''}`,
     division, num: w.course, wind: w, windBase: wb, list, objs, pts, shortened, modified,
-    startName: def.start, finishName, nm: modified ? charted : def.nm, codes: new Set(list.map(m => m.code)), startBoat,
+    startName: def.start, finishName, nm: modified ? charted : def.nm, codes: new Set(list.map(m => m.code)), startBoat, finishBoat,
     spawn: { x: s.x - up.x * back, y: s.y - up.y * back, h: norm(wb - 50 * DEG) }, // behind the line, close-hauled on starboard tack
   };
 }

@@ -9,16 +9,19 @@ import { toast, setupCourse, initSetup, finish, updateHud } from './ui.js';
 import { drawWorld } from './render.js';
 import { drawMinimap } from './minimap.js';
 import { play } from './sound.js';
+import { resetCommittee, stepCommittee } from './committee.js';
 
 game.course = setupCourse();
 game.boat = { ...game.course.spawn, v: 0, drift: 0, rudder: 0, sheet: 30, wake: [] };
 game.windFrom = game.course.windBase;
 view.cam.x = game.boat.x; view.cam.y = game.boat.y - 100;
+resetCommittee();
 
 function resetBoat() {
   const { boat, course } = game;
   Object.assign(boat, { ...course.spawn, v: 0, drift: 0, rudder: 0, sheet: 30, wake: [] });
   game.track = [{ x: boat.x, y: boat.y }];
+  resetCommittee();
   recenter(); view.cam.x = boat.x; view.cam.y = boat.y;
 }
 function startRace() {
@@ -53,6 +56,7 @@ function update(dt) {
     }
   }
 
+  stepCommittee(dt);
   followBoat(dt);
   moveParticles(dt);
   updateHud(info);

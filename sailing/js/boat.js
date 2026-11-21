@@ -2,6 +2,7 @@
 import { DEG, norm, clamp } from './util.js';
 import { W, H, isLand } from './chart.js';
 import { game } from './game.js';
+import { hitsCommittee } from './committee.js';
 
 export const MAXV = 150;
 
@@ -27,14 +28,6 @@ export const LEEWAY = 14;
 export function leewayFactor(twa) {
   if (twa < NOGO) return twa / NOGO;            // fading out head to wind, where the sail just flaps
   return clamp((150 - twa) / (150 - 45), 0, 1); // most close-hauled, none on a run
-}
-
-// The start boat lies anchored head to wind; its hull is an ellipse START_BOAT_LEN long and START_BOAT_BEAM wide.
-export const START_BOAT_LEN = 64, START_BOAT_BEAM = 22;
-export function hitsStartBoat(x, y) {
-  const sb = game.course.startBoat, h = game.windFrom, dx = x - sb.x, dy = y - sb.y;
-  const fwd = dx * Math.sin(h) - dy * Math.cos(h), side = dx * Math.cos(h) + dy * Math.sin(h);
-  return (fwd / (START_BOAT_LEN / 2 + 3)) ** 2 + (side / (START_BOAT_BEAM / 2 + 3)) ** 2 < 1;
 }
 
 // One physics step. Returns the sailing info for drawing and the HUD ({ twa, rel, eff }, measured before this
@@ -64,7 +57,7 @@ export function stepBoat(dt, racing) {
   let aground = false, hitBoat = false;
   const bowX = boat.x + Math.sin(boat.h) * 22, bowY = boat.y - Math.cos(boat.h) * 22;
   if (isLand(boat.x, boat.y) || isLand(bowX, bowY)) aground = true;
-  else if (hitsStartBoat(boat.x, boat.y) || hitsStartBoat(bowX, bowY)) hitBoat = true;
+  else if (hitsCommittee(boat.x, boat.y) || hitsCommittee(bowX, bowY)) hitBoat = true;
   if (aground || hitBoat) { boat.x = px; boat.y = py; boat.v *= 0.2; boat.drift *= 0.2; }
   if (boat.x < 40 || boat.x > W - 40 || boat.y < 40 || boat.y > H - 40) {
     boat.x = clamp(boat.x, 40, W - 40); boat.y = clamp(boat.y, 40, H - 40); boat.v *= 0.5;
