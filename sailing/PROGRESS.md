@@ -39,6 +39,10 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **To review:**
   - `finish()` lives in `ui.js` rather than `main.js` as planned, because it mostly updates the finish card and needs the setup state.
   - The scripts in `js/` are no longer readable by opening `index.html` from disk: use `python3 -m http.server`.
+- **Later the same day:** kept both test scripts in `tools/`:
+  - `race_test.py` races whole courses. A wrong-side check is skipped when that approach starts on the shore: 4 at Point Piper.
+  - `compare_versions.py [REF]` plays the same session against a git ref and the working tree.
+  - `browser_harness.py` holds the shared fake clock and browser setup.
 - **Next steps:** add leeway, the next to-do item.
 
 ## 2026-11-21 — Set up the agent workflow

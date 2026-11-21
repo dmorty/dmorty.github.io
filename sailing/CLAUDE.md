@@ -10,6 +10,9 @@ A simple, satisfying 2D sailing game playable in the browser. The player steers 
 - Everything must run as static files so it deploys to GitHub Pages.
 - Keep code split into ES modules by concern (chart, course, boat, wind, camera, input, rendering, UI). Don't create tiny files: a module should own one clear job.
 - Modules don't load from `file://`. Test through a local server: `python3 -m http.server` from the repo root, then open `/sailing/`.
+- Browser tests use Playwright and run from the repo root:
+  - `uv run --with playwright sailing/tools/race_test.py` races whole courses: start, rounding each mark (the wrong way is refused), finish, best times, reload.
+  - `uv run --with playwright sailing/tools/compare_versions.py [REF]` plays the same session against a git ref (default `master`) and the working tree, and reports any difference. Use it for refactors that must not change behaviour.
 - Works with keyboard on desktop; touch controls are a later goal.
 
 ## How to work (rules for the agent)

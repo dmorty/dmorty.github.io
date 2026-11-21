@@ -1,0 +1,102 @@
+"""Race whole courses in the working-tree game and check the race rules and the screens around them.
+
+Instead of steering, the test places the boat just before each objective and lets it sail through:
+the start line, each mark's rounding gate (first the wrong way, which must be refused, then the right way) and
+the finish line. It then checks the finish card, best-time storage, the setup surviving a reload, and that Enter
+starts another race. Fails on any console error or warning.
+
+Run from the repo root:
+    uv run --with playwright sailing/tools/race_test.py
+"""
+import pathlib
+import sys
+
+from playwright.sync_api import sync_playwright
+
+from browser_harness import launch, open_game, serve, stepper, wait_ready
+
+REPO = pathlib.Path(__file__).resolve().parents[2]
+RACES = [("2", "SW"), ("3", "RC")]  # division, wind ("RC" = race committee's pick)
+
+# put the boat 25 units before point c, sailing along unit vector d through it
+PLACE = """([cx, cy, dx, dy]) => import('./js/game.js').then(({ game }) => {
+  Object.assign(game.boat, { x: cx - dx * 25, y: cy - dy * 25, h: Math.atan2(dx, -dy), v: 120, rudder: 0 });
+})"""
+OBJ = """i => import('./js/game.js').then(({ game }) =>
+  JSON.parse(JSON.stringify({ o: game.course.objs[i], idx: game.objIdx, n: game.course.objs.length, state: game.state })))"""
+
+fails, skips = [], []
+
+
+def check(cond, msg):
+    print(("ok   " if cond else "FAIL ") + msg)
+    if not cond:
+        fails.append(msg)
+
+
+def gate_crossings(o):
+    """A point on mark o's rounding gate, and the right and wrong directions to sail across it."""
+    ax, ay, bx, by = o["a"]["x"], o["a"]["y"], o["b"]["x"], o["b"]["y"]
+    mx, my = ax + (bx - ax) * .3, ay + (by - ay) * .3
+    L = ((bx - ax) ** 2 + (by - ay) ** 2) ** .5
+    n = (-(by - ay) / L, (bx - ax) / L)
+    # the game's rule: crossing along d from p counts when cross(p - mark, d) < 0 is true for a port rounding
+    px, py = mx - n[0] * 25 - o["x"], my - n[1] * 25 - o["y"]
+    right = n if ((px * n[1] - py * n[0]) < 0) == o["port"] else (-n[0], -n[1])
+    return (mx, my), right, (-right[0], -right[1])
+
+
+def main():
+    log = []
+    with sync_playwright() as p:
+        browser = launch(p)
+        page = open_game(browser, serve(REPO), log=log)
+        step = stepper(page)
+        toast = lambda: page.text_content("#toast")
+        obj = lambda i: page.evaluate(OBJ, i)
+
+        for d, wind in RACES:
+            page.select_option("#division", d); page.select_option("#windsel", wind)
+            page.click("#start"); step(2)
+            first = obj(0)
+            check(first["state"] == "racing" and toast() == "Go!", f"division {d}, {wind} wind: race started")
+            for i in range(first["n"]):
+                o = obj(i)["o"]
+                if o["kind"] == "start":
+                    page.evaluate(PLACE, [o["x"], o["y"], o["dir"]["x"], o["dir"]["y"]]); step(30)
+                    check(toast() == "Started" and obj(i)["idx"] == 1, "  start line crossed")
+                elif o["kind"] == "mark":
+                    (mx, my), right, wrong = gate_crossings(o)
+                    page.evaluate(PLACE, [mx, my, *wrong]); step(30)
+                    if toast() == "Aground!":  # the wrong-side approach starts on the shore: nothing to test here
+                        print(f"skip   {o['code']}: wrong-side approach runs aground")
+                        skips.append(o["code"])
+                    else:
+                        check(toast().startswith(f"Leave {o['code']} to") and obj(i)["idx"] == i, f"  {o['code']}: wrong side refused")
+                    page.evaluate(PLACE, [mx, my, *right]); step(30)
+                    check(obj(i)["idx"] == i + 1 and toast() == f"{o['code']} ✓", f"  {o['code']}: rounded")
+                else:
+                    page.evaluate(PLACE, [o["x"], o["y"], o["dir"]["x"], o["dir"]["y"]]); step(30)
+                    check(page.is_visible("#overlay") and page.text_content("#headline") == "New best time", "  finished: new best time card")
+                    check(page.text_content("#start") == "Race again", '  "Race again" button')
+            if wind == "RC":
+                check(page.input_value("#windsel") == "RC", "  race committee's pick kept for the next race")
+        best = page.evaluate("JSON.parse(localStorage.getItem('rsysBest'))") or {}
+        check(len(best) == len(RACES), f"best times stored for {len(RACES)} courses: {sorted(best)}")
+
+        page.reload(); wait_ready(page); step(2)
+        last_d, last_w = RACES[-1]
+        check(page.input_value("#division") == last_d and page.input_value("#windsel") == last_w, "setup persists after reload")
+        page.select_option("#division", RACES[0][0]); page.select_option("#windsel", RACES[0][1]); step(1)
+        check("best" in page.text_content("#sheet"), "best time shown on the course sheet")
+        page.keyboard.press("Enter"); step(2)
+        check(toast() == "Go!", "Enter starts another race")
+        check(not log, f"no console errors or warnings {log or ''}")
+        browser.close()
+
+    print(f"{'ALL PASSED' if not fails else f'{len(fails)} FAILED'}" + (f" ({len(skips)} wrong-side checks skipped)" if skips else ""))
+    sys.exit(1 if fails else 0)
+
+
+if __name__ == "__main__":
+    main()
