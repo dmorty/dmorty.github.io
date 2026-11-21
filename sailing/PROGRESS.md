@@ -17,7 +17,7 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **Branch:** `start-boat-to-finish`
 - **What changed:**
   - **New `js/committee.js`:** it owns the start boat, which was previously drawn from fixed course data.
-    - The boat waits at the start line until the player crosses it, so the start line keeps both ends until the player has started.
+    - The boat waits at the start line until 30 seconds after the player crosses it (`WAIT` in `js/committee.js`, added at the user's request). The start line keeps both ends until the player has started.
     - It then motors at about 9 kn to the finish, with a wake. It slows for sharp turns and for the final approach, and stops to give way if the player's boat is close ahead.
     - It anchors in place of one finish pin and swings to lie head to wind.
   - **Route:** A* over a grid of open-water cells at least 30 units from land, built once and then reused. The path is straightened wherever a clear straight run has room for the hull.
@@ -29,14 +29,14 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
   - The boat stays solid wherever it is: collision moved from `boat.js` to `committee.js`.
 - **Testing:**
   - `race_test.py` has three new checks:
-    - the boat leaves once the player has started;
+    - the boat is still at the start 29 s after the player starts, and under way by 31 s;
     - in a live race it reaches the finish (7 s on that course) without its centre ever crossing land, and anchors at the right spot;
     - every one of the 120 course combinations (division × wind × flag S × flag O) has a water route, with no point along it on land.
   - All checks pass, with no console errors. Checked in screenshots under way and anchored at the finish.
 - **To review:**
   - Speed is `SPEED = 110` (about 9 kn) in `js/committee.js`. On most courses it reaches the finish long before the player, so the player rarely sees it arrive.
   - The route check covers the boat's centre line and a hull-width margin on straightened legs, not every point of the hull on turns.
-  - The boat leaves when the player crosses the start line, not at the "Go!" signal.
+  - The 30 seconds count from when the player crosses the start line, not from the "Go!" signal.
 - **Next steps:** the to-do list is complete. The later list starts with converting the RSYS data into the per-location course file format.
 
 ## 2026-11-21 — Link to the game from the site's home page

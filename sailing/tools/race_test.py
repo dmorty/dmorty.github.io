@@ -149,15 +149,16 @@ def main():
         trip = page.evaluate("""async () => {
           const { committee } = await import('./js/committee.js'); const { isLand } = await import('./js/chart.js');
           const { game } = await import('./js/game.js');
-          const went = committee.state; let onLand = 0, frames = 0;
+          window.__step(60 * 29, 1000 / 60); const waited = committee.state;
+          window.__step(60 * 2, 1000 / 60); const went = committee.state; let onLand = 0, frames = 0;
           while (committee.state !== 'finish' && frames < 60 * 300) {
             window.__step(1, 1000 / 60); frames++;
             if (isLand(committee.x, committee.y)) onLand++;
           }
           const fb = game.course.finishBoat;
-          return { went, state: committee.state, secs: frames / 60, onLand, off: Math.hypot(committee.x - fb.x, committee.y - fb.y) };
+          return { waited, went, state: committee.state, secs: frames / 60, onLand, off: Math.hypot(committee.x - fb.x, committee.y - fb.y) };
         }""")
-        check(trip["went"] == "motoring", "the start boat leaves once the player has started")
+        check(trip["waited"] == "start" and trip["went"] == "motoring", "the start boat waits 30 s after the player starts, then leaves")
         check(trip["state"] == "finish" and trip["off"] < 1 and not trip["onLand"],
               f"it reaches the finish in {trip['secs']:.0f} s without crossing land, and anchors at the pin's end")
 

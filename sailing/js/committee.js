@@ -1,5 +1,5 @@
-// The start boat (the race committee boat). It lies at the starboard end of the start line until the player has
-// crossed the start, then motors round the harbour to the finish and anchors beyond one end of the finish line,
+// The start boat (the race committee boat). It lies at the starboard end of the start line until WAIT seconds after
+// the player has crossed the start, then motors round the harbour to the finish and anchors beyond one end of the finish line,
 // replacing that pin. Anchored, it lies head to wind; under way it follows a path that stays clear of the shore.
 import { clamp, norm } from './util.js';
 import { W, H, isLand } from './chart.js';
@@ -10,13 +10,15 @@ const SPEED = 110;  // world units/s, about 9 knots
 const TURN = 2.2;   // rad/s
 const CELL = 15;    // pathfinding grid cell (world units)
 const CLEAR = 30;   // the path keeps this far from land
+const WAIT = 30;    // seconds the start boat stays at the start after the player crosses the line
 
 // state: 'start' (anchored at the start), 'motoring', 'finish' (anchored at the finish)
-export const committee = { x: 0, y: 0, h: 0, v: 0, state: 'start', path: [], wp: 0, wake: [], wakeT: 0 };
+// leaveAt: race time when it sets off for the finish, once the player has started
+export const committee = { x: 0, y: 0, h: 0, v: 0, state: 'start', leaveAt: null, path: [], wp: 0, wake: [], wakeT: 0 };
 
 export function resetCommittee() {
   const sb = game.course.startBoat;
-  Object.assign(committee, { x: sb.x, y: sb.y, h: game.windFrom, v: 0, state: 'start', path: [], wp: 0, wake: [], wakeT: 0 });
+  Object.assign(committee, { x: sb.x, y: sb.y, h: game.windFrom, v: 0, state: 'start', leaveAt: null, path: [], wp: 0, wake: [], wakeT: 0 });
 }
 
 // Is world point (x, y) inside the committee boat's hull (an ellipse a little larger than the drawn hull)?
@@ -103,7 +105,8 @@ export function stepCommittee(dt) {
   const c = committee, boat = game.boat;
   if (c.state === 'start') {
     c.h = game.windFrom; // anchored: lies head to wind
-    if (game.state === 'racing' && game.objIdx >= 1) {
+    if (game.state === 'racing' && game.objIdx >= 1 && c.leaveAt === null) c.leaveAt = game.raceT + WAIT;
+    if (game.state === 'racing' && c.leaveAt !== null && game.raceT >= c.leaveAt) {
       const target = game.course.finishBoat, path = findPath(c, target);
       if (path) { c.path = path; c.wp = 1; c.state = 'motoring'; }
       else { console.warn('No water route for the start boat to the finish'); Object.assign(c, target, { state: 'finish' }); }
