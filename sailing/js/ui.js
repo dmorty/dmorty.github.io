@@ -4,6 +4,7 @@ import { RS, buildCourse, sheetLine } from './course.js';
 import { NOGO, optimalSheet } from './boat.js';
 import { game } from './game.js';
 import { view } from './camera.js';
+import { soundOn, setSound } from './sound.js';
 
 let toastTimer;
 export function toast(msg) { const el = $('toast'); el.textContent = msg; el.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.style.opacity = 0, 1200); }
@@ -43,6 +44,8 @@ export function initSetup(onReset) {
   $('windsel').addEventListener('change', e => { setup.wind = e.target.value; if (setup.wind === 'RC') rcWind = rcPick(); applySetup(); });
   $('shortened').addEventListener('change', e => { setup.shortened = e.target.checked; applySetup(); });
   $('kirribilli').addEventListener('change', e => { setup.kirribilli = e.target.checked; applySetup(); });
+  $('sound').checked = soundOn();
+  $('sound').addEventListener('change', e => setSound(e.target.checked));
   renderSheet();
 }
 

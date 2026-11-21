@@ -8,6 +8,7 @@ import { initInput } from './input.js';
 import { toast, setupCourse, initSetup, finish, updateHud } from './ui.js';
 import { drawWorld } from './render.js';
 import { drawMinimap } from './minimap.js';
+import { play } from './sound.js';
 
 game.course = setupCourse();
 game.boat = { ...game.course.spawn, v: 0, drift: 0, rudder: 0, sheet: 30, wake: [] };
@@ -24,7 +25,7 @@ function startRace() {
   resetBoat();
   game.objIdx = 0; game.raceT = 0; game.state = 'racing';
   $('overlay').hidden = true;
-  toast('Go!');
+  toast('Go!'); play('go');
 }
 
 initInput({ startRace });
@@ -37,16 +38,16 @@ function update(dt) {
   const racing = game.state === 'racing';
   if (racing) game.raceT += dt;
   const { info, px, py, aground } = stepBoat(dt, racing);
-  if (aground && racing && game.t - game.groundT > 2) { game.groundT = game.t; toast('Aground!'); }
+  if (aground && racing && game.t - game.groundT > 2) { game.groundT = game.t; toast('Aground!'); play('aground'); }
 
   // next objective: cross the start line upwind, round the mark on its required side, or cross the finish line
   if (racing) {
     const boat = game.boat, o = game.course.objs[game.objIdx], dx = boat.x - px, dy = boat.y - py;
     if (segHit({ x: px, y: py }, boat, o.a, o.b)) {
       const ok = o.kind === 'mark' ? (cr(px - o.x, py - o.y, dx, dy) < 0) === o.port : dx * o.dir.x + dy * o.dir.y > 0;
-      if (!ok) { if (o.kind === 'mark') toast(`Leave ${o.code} to ${o.port ? 'port' : 'starboard'}`); }
-      else if (o.kind === 'finish') finish();
-      else { toast(o.kind === 'start' ? 'Started' : `${o.code} ✓`); game.objIdx++; }
+      if (!ok) { if (o.kind === 'mark') { toast(`Leave ${o.code} to ${o.port ? 'port' : 'starboard'}`); play('wrong'); } }
+      else if (o.kind === 'finish') { play('finish'); finish(); }
+      else { toast(o.kind === 'start' ? 'Started' : `${o.code} ✓`); play(o.kind === 'start' ? 'started' : 'mark'); game.objIdx++; }
     }
   }
 

@@ -14,7 +14,7 @@ import sys
 
 from playwright.sync_api import sync_playwright
 
-from browser_harness import launch, open_game, serve, stepper, wait_ready
+from browser_harness import FAKE_CLOCK, launch, open_game, serve, stepper, wait_ready
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 RACES = [("2", "SW"), ("3", "RC")]  # division, wind ("RC" = race committee's pick)
@@ -25,6 +25,15 @@ PLACE = """([cx, cy, dx, dy]) => import('./js/game.js').then(({ game }) => {
 })"""
 OBJ = """i => import('./js/game.js').then(({ game }) =>
   JSON.parse(JSON.stringify({ o: game.course.objs[i], idx: game.objIdx, n: game.course.objs.length, state: game.state })))"""
+
+# count the sounds the game makes: every effect creates at least one oscillator or noise source
+AUDIO_SPY = """
+window.__sounds = 0;
+for (const m of ['createOscillator', 'createBufferSource']) {
+  const orig = AudioContext.prototype[m];
+  AudioContext.prototype[m] = function () { window.__sounds++; return orig.call(this); };
+}
+"""
 
 fails, skips = [], []
 
@@ -51,7 +60,7 @@ def main():
     log = []
     with sync_playwright() as p:
         browser = launch(p)
-        page = open_game(browser, serve(REPO), log=log)
+        page = open_game(browser, serve(REPO), (FAKE_CLOCK, AUDIO_SPY), log)
         step = stepper(page)
         toast = lambda: page.text_content("#toast")
         obj = lambda i: page.evaluate(OBJ, i)
@@ -85,6 +94,9 @@ def main():
         best = page.evaluate("JSON.parse(localStorage.getItem('rsysBest'))") or {}
         check(len(best) == len(RACES), f"best times stored for {len(RACES)} courses: {sorted(best)}")
 
+        sounds = page.evaluate("window.__sounds")
+        check(sounds > 0, f"sound effects played during the races ({sounds} sources)")
+
         page.reload(); wait_ready(page); step(2)
         last_d, last_w = RACES[-1]
         check(page.input_value("#division") == last_d and page.input_value("#windsel") == last_w, "setup persists after reload")
@@ -108,6 +120,17 @@ def main():
         step(30)  # let the speed build on the run
         run = slip(60)
         check(abs(run) < abs(close) / 4, f"on a run it barely slips ({run:.1f} units in 1 s)")
+        # M mutes: crossing the start line again makes no sound, and the setting survives a reload
+        page.keyboard.press("m"); step(1)
+        check(page.text_content("#toast") == "Sound off" and not page.is_checked("#sound"), "M turns sound off")
+        before = page.evaluate("window.__sounds")
+        o = obj(0)["o"]
+        page.evaluate(PLACE, [o["x"], o["y"], o["dir"]["x"], o["dir"]["y"]]); step(30)
+        check(toast() == "Started" and page.evaluate("window.__sounds") == before, "no sound while muted")
+        page.reload(); wait_ready(page); step(1)
+        check(not page.is_checked("#sound"), "sound setting persists after reload")
+        page.check("#sound"); page.click("#start"); step(2)
+        check(page.evaluate("window.__sounds") > 0, "sound back on from the start card checkbox")
         check(not log, f"no console errors or warnings {log or ''}")
         browser.close()
 

@@ -135,12 +135,14 @@ body { background: var(--sea); color: var(--ink); font-family: var(--font-body);
       <label>Wind <select id="windsel"></select></label>
       <label class="check"><input type="checkbox" id="shortened"> Shortened course (flag S)</label>
       <label class="check"><input type="checkbox" id="kirribilli"> Kirribilli finish (flag O)</label>
+      <label class="check"><input type="checkbox" id="sound" checked> Sound effects</label>
     </div>
     <div class="sheet" id="sheet" aria-live="polite"></div>
     <div class="keys" id="help">
       <kbd>← →</kbd><span>Steer (or Port / Stbd buttons)</span>
       <kbd>↑ / ↓</kbd><span>Trim in / ease out the sail</span>
       <kbd>Drag · scroll</kbd><span>Look around the course (pinch or + / − to zoom, C to recenter)</span>
+      <kbd>M</kbd><span>Sound on / off</span>
     </div>
     <p id="tips">Cross the start line, then round every mark in order: green marks are left to starboard, red marks to port. You can't sail within 30° of the wind (the shaded wedge), so tack upwind. The breeze also pushes you sideways, most when you are slow or close-hauled, so give marks and the shore some room. Keep the trim needle in the green band and keep off the shore: running aground stops you dead.</p>
     <button class="cta" id="start">Start race</button>

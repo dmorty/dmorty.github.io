@@ -12,6 +12,27 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **Questions:** (if blocked or unsure)
 -->
 
+## 2026-11-21 — Add simple sound effects
+
+- **Branch:** `add-sound-effects`
+- **What changed:**
+  - New `js/sound.js` builds every sound in code with the Web Audio API, so there are no audio files and no new dependencies.
+  - Sounds:
+    - a start horn on "Go!"
+    - a ping on crossing the start line
+    - a bell for each mark rounded
+    - a double buzz for a wrong-side rounding
+    - a thud on running aground
+    - a finish gun: a short horn, then a long one
+  - Browsers block audio until the player interacts, so audio starts on the first key press or tap. The first race's start horn still plays.
+  - Mute with the new "Sound effects" checkbox on the start card, or with M during a race. The setting is saved in `localStorage` (`rsysSound`), and the card's help list now shows the M key.
+- **Testing:**
+  - `race_test.py` now counts the audio sources the game creates. It checks that sounds play during races, that M mutes them and shows "Sound off", that a muted start-line crossing is silent, that the setting survives a reload, and that the checkbox turns sound back on.
+  - All checks pass, with no console errors. The races covered every sound.
+  - The start card was checked in screenshots at desktop and phone sizes.
+- **To review:** listen to the sounds. The tests prove they play, not that they sound good. Volumes and pitches are in the `SOUNDS` table in `js/sound.js`.
+- **Next steps:** link to the game from the site's home page (`index.md`).
+
 ## 2026-11-21 — Add leeway
 
 - **Branch:** `add-leeway`

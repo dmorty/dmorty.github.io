@@ -2,6 +2,8 @@
 import { $ } from './util.js';
 import { game } from './game.js';
 import { view, zoomAt, clampCam, recenter, detach } from './camera.js';
+import { soundOn, setSound } from './sound.js';
+import { toast } from './ui.js';
 
 const keymap = { ArrowLeft: 'left', a: 'left', A: 'left', ArrowRight: 'right', d: 'right', D: 'right', ArrowUp: 'trim', w: 'trim', W: 'trim', ArrowDown: 'ease', s: 'ease', S: 'ease' };
 
@@ -13,6 +15,7 @@ export function initInput({ startRace }) {
     if (e.key === '+' || e.key === '=') zoomAt(1.25, view.cw / 2, view.ch / 2);
     if (e.key === '-' || e.key === '_') zoomAt(0.8, view.cw / 2, view.ch / 2);
     if (e.key === 'c' || e.key === 'C') recenter();
+    if (e.key === 'm' || e.key === 'M') { setSound(!soundOn()); $('sound').checked = soundOn(); toast(soundOn() ? 'Sound on' : 'Sound off'); }
   });
   addEventListener('keyup', e => { if (keymap[e.key]) input[keymap[e.key]] = 0; });
   document.querySelectorAll('.btn').forEach(b => {
