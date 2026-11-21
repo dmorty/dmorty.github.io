@@ -26,6 +26,7 @@ export function initInput({ startRace }) {
     b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
     b.addEventListener('contextmenu', e => e.preventDefault());
   });
+  $('autotrim').checked = game.auto; // the browser may restore an old checkbox state on reload
   $('autotrim').addEventListener('change', e => game.auto = e.target.checked);
   $('recenter').addEventListener('click', recenter);
 

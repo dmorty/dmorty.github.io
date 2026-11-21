@@ -12,6 +12,6 @@ export const game = {
   wakeT: 0,
   groundT: -9,       // when the last "Aground!" toast showed
   track: [],         // full sailed course for the minimap, reset each race
-  auto: false,       // auto-trim
+  auto: true,        // auto-trim, on by default
   input: { left: 0, right: 0, trim: 0, ease: 0 },
 };

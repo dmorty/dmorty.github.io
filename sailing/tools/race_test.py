@@ -65,6 +65,9 @@ def main():
         toast = lambda: page.text_content("#toast")
         obj = lambda i: page.evaluate(OBJ, i)
 
+        auto = page.evaluate("import('./js/game.js').then(({ game }) => game.auto)")
+        check(auto and page.is_checked("#autotrim"), "auto-trim is on by default")
+
         for d, wind in RACES:
             page.select_option("#division", d); page.select_option("#windsel", wind)
             page.click("#start"); step(2)

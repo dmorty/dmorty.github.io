@@ -12,6 +12,13 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **Questions:** (if blocked or unsure)
 -->
 
+## 2026-11-21 — Auto-trim on by default
+
+- **Branch:** `start-boat-to-finish`. This is a user request outside the to-do list, made while that branch was unmerged.
+- **What changed:** auto-trim now starts on: `game.auto` is `true`, and the HUD checkbox starts ticked. At load the checkbox takes its value from `game.auto`, so a browser restoring an old checkbox state can't leave the two disagreeing.
+- **Testing:** `race_test.py` checks that auto-trim starts on. All checks pass.
+- **To review:** the choice isn't remembered between visits. Every load starts with auto-trim on.
+
 ## 2026-11-21 — Start boat moves to the finish line
 
 - **Branch:** `start-boat-to-finish`
