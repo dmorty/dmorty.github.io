@@ -28,7 +28,7 @@ A simple, satisfying 2D sailing game playable in the browser. The player steers 
 ## To-do list
 
 - [x] Split `index.html` into ES modules, with no change in behaviour
-- [ ] Add leeway, so the boat drifts sideways a little, especially when slow or close-hauled
+- [x] Add leeway, so the boat drifts sideways a little, especially when slow or close-hauled
 - [ ] Add simple sound effects
 - [ ] Link to the game from the site's home page (`index.md`)
 

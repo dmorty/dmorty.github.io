@@ -20,6 +20,15 @@ export function trimEff(sheet, twa) {
   return Math.max(0, 1 - (sheet - opt) / 22);
 }
 
+// Leeway: the wind on the sail also pushes the boat sideways, away from the wind. The keel resists it better the
+// faster the boat goes, so a slow boat slips most. LEEWAY is the sideways speed (world units/s) of a stopped boat,
+// close-hauled in full wind: about 5° of leeway at close-hauled racing speed.
+export const LEEWAY = 14;
+export function leewayFactor(twa) {
+  if (twa < NOGO) return twa / NOGO;            // fading out head to wind, where the sail just flaps
+  return clamp((150 - twa) / (150 - 45), 0, 1); // most close-hauled, none on a run
+}
+
 // One physics step. Returns the sailing info for drawing and the HUD ({ twa, rel, eff }, measured before this
 // step's steering), the position before the move, and whether the boat hit land.
 export function stepBoat(dt, racing) {
@@ -38,12 +47,15 @@ export function stepBoat(dt, racing) {
   const target = racing ? MAXV * game.windStr * polar(twa) * eff : 0;
   boat.v += (target - boat.v) * dt * (target > boat.v ? 0.55 : 0.9);
   boat.v *= 1 - Math.abs(boat.rudder) * 0.2 * dt;
+  // sideways speed, positive to starboard; leeward is to port when the wind comes over the starboard side (rel > 0)
+  const drift = racing ? -Math.sign(rel) * LEEWAY * game.windStr * leewayFactor(twa) * (1 - 0.65 * Math.min(1, boat.v / MAXV)) : 0;
+  boat.drift += (drift - boat.drift) * Math.min(1, dt * 1.5);
   const px = boat.x, py = boat.y;
-  boat.x += Math.sin(boat.h) * boat.v * dt;
-  boat.y -= Math.cos(boat.h) * boat.v * dt;
+  boat.x += (Math.sin(boat.h) * boat.v + Math.cos(boat.h) * boat.drift) * dt;
+  boat.y += (-Math.cos(boat.h) * boat.v + Math.sin(boat.h) * boat.drift) * dt;
   let aground = false;
   if (isLand(boat.x, boat.y) || isLand(boat.x + Math.sin(boat.h) * 22, boat.y - Math.cos(boat.h) * 22)) {
-    boat.x = px; boat.y = py; boat.v *= 0.2;
+    boat.x = px; boat.y = py; boat.v *= 0.2; boat.drift *= 0.2;
     aground = true;
   }
   if (boat.x < 40 || boat.x > W - 40 || boat.y < 40 || boat.y > H - 40) {

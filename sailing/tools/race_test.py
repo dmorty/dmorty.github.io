@@ -8,6 +8,7 @@ starts another race. Fails on any console error or warning.
 Run from the repo root:
     uv run --with playwright sailing/tools/race_test.py
 """
+import math
 import pathlib
 import sys
 
@@ -91,6 +92,22 @@ def main():
         check("best" in page.text_content("#sheet"), "best time shown on the course sheet")
         page.keyboard.press("Enter"); step(2)
         check(toast() == "Go!", "Enter starts another race")
+
+        # leeway: from the spawn (stopped, close-hauled on starboard tack) the boat slips to port, away from the wind;
+        # on a run it barely slips
+        def slip(frames):
+            start = page.evaluate("import('./js/game.js').then(({ game }) => ({ ...game.boat }))")
+            step(frames)
+            end = page.evaluate("import('./js/game.js').then(({ game }) => ({ ...game.boat }))")
+            dx, dy = end["x"] - start["x"], end["y"] - start["y"]
+            return dx * math.cos(start["h"]) + dy * math.sin(start["h"])  # sideways distance, + to starboard
+        close = slip(60)
+        check(close < -4, f"close-hauled from a standstill, the boat slips to leeward ({close:.1f} units in 1 s)")
+        page.evaluate("""import('./js/game.js').then(({ game }) =>
+          Object.assign(game.boat, { h: game.windFrom + Math.PI, v: 0, drift: 0 }))""")
+        step(30)  # let the speed build on the run
+        run = slip(60)
+        check(abs(run) < abs(close) / 4, f"on a run it barely slips ({run:.1f} units in 1 s)")
         check(not log, f"no console errors or warnings {log or ''}")
         browser.close()
 

@@ -10,13 +10,13 @@ import { drawWorld } from './render.js';
 import { drawMinimap } from './minimap.js';
 
 game.course = setupCourse();
-game.boat = { ...game.course.spawn, v: 0, rudder: 0, sheet: 30, wake: [] };
+game.boat = { ...game.course.spawn, v: 0, drift: 0, rudder: 0, sheet: 30, wake: [] };
 game.windFrom = game.course.windBase;
 view.cam.x = game.boat.x; view.cam.y = game.boat.y - 100;
 
 function resetBoat() {
   const { boat, course } = game;
-  Object.assign(boat, { ...course.spawn, v: 0, rudder: 0, sheet: 30, wake: [] });
+  Object.assign(boat, { ...course.spawn, v: 0, drift: 0, rudder: 0, sheet: 30, wake: [] });
   game.track = [{ x: boat.x, y: boat.y }];
   recenter(); view.cam.x = boat.x; view.cam.y = boat.y;
 }

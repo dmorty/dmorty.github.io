@@ -12,6 +12,26 @@ One entry per task, newest first. See the rules in [CLAUDE.md](CLAUDE.md).
 - **Questions:** (if blocked or unsure)
 -->
 
+## 2026-11-21 — Add leeway
+
+- **Branch:** `add-leeway`
+- **What changed:**
+  - `js/boat.js`: the wind now pushes the boat sideways, away from the wind (`boat.drift`, eased in smoothly).
+    - The push is strongest close-hauled, fades to nothing on a run, and fades out head to wind.
+    - A stopped boat slips about three times as much as one at full speed.
+    - It's tuned by one constant, `LEEWAY = 14`, the sideways speed of a stopped boat close-hauled in full wind.
+  - Leeway applies only while racing, so the boat stays still behind the start line while the setup card is showing.
+  - Running aground also kills the drift.
+  - The start card tips now mention it.
+- **Testing:**
+  - `race_test.py` has two new checks. Close-hauled from a standstill, the boat slips 6 units to leeward in 1 second; on a run, it slips 0.
+  - All the existing race checks still pass, and `check_courses.py` reports 0 problems.
+  - Leeway measured at speed with auto-trim: about 10° at 45° to the wind (pinching, 4.6 kn), about 4° at 60° (7.8 kn) and under 1° at 135°.
+- **To review:**
+  - Is 10° when pinching too much? Real dinghies slip about 5-10° when pinched. Lower `LEEWAY` if it feels punishing.
+  - `compare_versions.py` against `master` will now show differences in races. That's expected, because this task changes how the boat moves.
+- **Next steps:** add simple sound effects.
+
 ## 2026-11-21 — Split index.html into ES modules
 
 - **Branch:** `split-into-modules`

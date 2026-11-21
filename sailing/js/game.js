@@ -2,7 +2,7 @@
 // (an imported binding can't be reassigned, so state that changes lives here).
 export const game = {
   course: null,      // the current course, from course.js buildCourse()
-  boat: null,        // { x, y, h, v, rudder, sheet, wake }
+  boat: null,        // { x, y, h, v, drift, rudder, sheet, wake }; drift = sideways speed, + to starboard
   state: 'ready',    // 'ready' | 'racing' | 'finished'
   objIdx: 0,         // next start line / mark / finish in course.objs
   t: 0,              // seconds since load
